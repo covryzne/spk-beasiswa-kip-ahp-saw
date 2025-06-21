@@ -1,0 +1,16 @@
+@import "@fontsource/instrument-sans";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    body {
+        @apply font-sans bg-gray-100;
+    }
+}
+
+/* Tambah dummy class buat tes */
+.test-dummy-class {
+    @apply text-green-500;
+}
