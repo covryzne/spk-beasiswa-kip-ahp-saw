@@ -18,6 +18,9 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot()
     {
+        // Register model observers
+        \App\Models\Kriteria::observe(\App\Observers\KriteriaObserver::class);
+
         // Add custom CSS for smooth sidebar animation
         \Filament\Support\Facades\FilamentView::registerRenderHook(
             'panels::head.end',
