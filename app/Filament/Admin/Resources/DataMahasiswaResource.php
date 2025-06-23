@@ -12,6 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Collection;
 
 class DataMahasiswaResource extends Resource
 {
@@ -230,11 +231,6 @@ class DataMahasiswaResource extends Resource
                         'gray' => 'Sangat Baik',       // Abu-abu
                     ])
                     ->label('Kondisi Rumah'),
-                Tables\Columns\TextColumn::make('calonMahasiswa')
-                    ->badge()
-                    ->getStateUsing(fn(DataMahasiswa $record) => $record->calonMahasiswa->count())
-                    ->colors(['success'])
-                    ->label('Used in SPK'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -262,11 +258,25 @@ class DataMahasiswaResource extends Resource
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
+                Tables\Actions\Action::make('print_pdf')
+                    ->label('Print PDF')
+                    ->icon('heroicon-o-printer')
+                    ->color('info')
+                    ->url(fn(DataMahasiswa $record): string => route('data-mahasiswa.pdf', $record))
+                    ->openUrlInNewTab(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
+            ])
+            ->headerActions([
+                Tables\Actions\Action::make('print_all_pdf')
+                    ->label('Print All Data')
+                    ->icon('heroicon-o-printer')
+                    ->color('info')
+                    ->url(fn(): string => route('data-mahasiswa.print-all'))
+                    ->openUrlInNewTab(),
             ])
             ->defaultSort('created_at', 'desc');
     }

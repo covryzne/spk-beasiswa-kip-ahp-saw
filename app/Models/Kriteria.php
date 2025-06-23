@@ -239,10 +239,39 @@ class Kriteria extends Model
             return 'Rp ' . number_format($value, 0, ',', '.');
         }
 
-        // Format location with options
-        if (str_contains($kriteriaName, 'tempat tinggal') || str_contains($kriteriaName, 'lokasi') || str_contains($kriteriaName, 'kondisi')) {
-            $options = $this->getOptions();
-            return $options[$value] ?? "Tidak diketahui (nilai: {$value})";
+        // Format location/kondisi tempat tinggal with proper mapping
+        if (str_contains($kriteriaName, 'tempat tinggal') || str_contains($kriteriaName, 'kondisi')) {
+            $mapping = [
+                1 => 'Sangat Kurang',
+                2 => 'Kurang',
+                3 => 'Cukup',
+                4 => 'Baik',
+                5 => 'Sangat Baik'
+            ];
+            $intValue = (int) $value;
+            return $mapping[$intValue] ?? "Tidak diketahui (nilai: {$value})";
+        }
+
+        // Format status pekerjaan
+        if (str_contains($kriteriaName, 'pekerjaan') || str_contains($kriteriaName, 'kerja')) {
+            $mapping = [
+                1 => 'Tidak Bekerja',
+                2 => 'Bekerja'
+            ];
+            $intValue = (int) $value;
+            return $mapping[$intValue] ?? "Tidak diketahui (nilai: {$value})";
+        }
+
+        // Format dukungan orang tua
+        if (str_contains($kriteriaName, 'dukungan') || str_contains($kriteriaName, 'support')) {
+            $mapping = [
+                1 => 'Kurang Mendukung',
+                2 => 'Cukup Mendukung',
+                3 => 'Mendukung',
+                4 => 'Sangat Mendukung'
+            ];
+            $intValue = (int) $value;
+            return $mapping[$intValue] ?? "Tidak diketahui (nilai: {$value})";
         }
 
         // Format scores/percentages
@@ -260,8 +289,8 @@ class Kriteria extends Model
             return number_format($value, 1) . ' km';
         }
 
-        // Default formatting
-        return is_numeric($value) ? number_format($value, 2) : $value;
+        // Default: return value as is
+        return (string) $value;
     }
 
     /**

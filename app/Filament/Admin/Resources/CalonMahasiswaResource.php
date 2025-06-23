@@ -286,6 +286,14 @@ class CalonMahasiswaResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
+            ->headerActions([
+                Tables\Actions\Action::make('print_all_pdf')
+                    ->label('Print All Data')
+                    ->icon('heroicon-o-printer')
+                    ->color('info')
+                    ->url(fn(): string => route('calon-mahasiswa.print-all'))
+                    ->openUrlInNewTab(),
+            ])
             ->defaultSort('kode', 'asc');
     }
 
