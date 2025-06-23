@@ -88,7 +88,6 @@ class SawService
     private function normalizeMatrix(array $decisionMatrix, $kriteria): array
     {
         $normalizedMatrix = $decisionMatrix;
-
         foreach ($kriteria as $index => $kriteriaItem) {
             $fieldName = strtolower($kriteriaItem->kode); // c1, c2, c3, etc.
             $values = array_column($decisionMatrix, $fieldName);
@@ -96,18 +95,21 @@ class SawService
             if (empty($values)) {
                 continue; // Skip if no values for this criteria
             }
-
             if ($kriteriaItem->jenis === 'Cost') {
                 // For cost criteria: min/value
                 $minValue = min($values);
                 foreach ($normalizedMatrix as &$row) {
-                    $row[$fieldName . '_normalized'] = ($minValue != 0 && $row[$fieldName] != 0) ? $minValue / $row[$fieldName] : 0;
+                    $currentValue = (float) $row[$fieldName];
+                    $minValueFloat = (float) $minValue;
+                    $row[$fieldName . '_normalized'] = ($minValueFloat != 0 && $currentValue != 0) ? $minValueFloat / $currentValue : 0;
                 }
             } else {
                 // For benefit criteria: value/max
                 $maxValue = max($values);
                 foreach ($normalizedMatrix as &$row) {
-                    $row[$fieldName . '_normalized'] = $maxValue != 0 ? $row[$fieldName] / $maxValue : 0;
+                    $currentValue = (float) $row[$fieldName];
+                    $maxValueFloat = (float) $maxValue;
+                    $row[$fieldName . '_normalized'] = $maxValueFloat != 0 ? $currentValue / $maxValueFloat : 0;
                 }
             }
         }

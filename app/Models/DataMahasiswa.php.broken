@@ -1,0 +1,420 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Kriteria;
+
+class DataMahasiswa extends Model
+{
+    use HasFactory;
+    protected $table = 'data_mahasiswa';
+
+    protected $fillable = [
+        'nama',
+        'program_studi',
+        'kip_status',
+        'orang_tua_status',
+        'pekerjaan_orang_tua',
+        'penghasilan_orang_tua',
+        'jumlah_saudara',
+        'kepemilikan_rumah',
+        'kondisi_rumah',
+        'daya_listrik',
+        'sumber_air',
+        'kendaraan',
+        'kondisi_ekonomi',
+        'prestasi',
+        'status_bekerja',
+        'status_daftar_ulang',
+        'sumber_biaya_daftar_ulang',
+        'komitmen',
+        'fleksibilitas_jurusan',
+        'rencana_mendaftar_lagi',
+        'support_orang_tua'
+    ];
+
+    protected $casts = [
+        'penghasilan_orang_tua' => 'decimal:2',
+        'jumlah_saudara' => 'integer',
+        'daya_listrik' => 'integer'
+    ];
+
+    /**
+     * Relasi ke CalonMahasiswa
+     */
+    public function calonMahasiswa(): HasMany
+    {
+        return $this->hasMany(CalonMahasiswa::class, 'data_mahasiswa_id');
+    }
+
+    /**
+     * Mapping data mahasiswa ke kriteria dinamis
+     * Fungsi ini mengambil nilai dari kolom DataMahasiswa sesuai dengan kriteria aktif
+     */
+    public function getMappedValueForKriteria($kriteriaKode): mixed
+    {
+        // Mapping manual berdasarkan nama/kode kriteria
+        $mapping = $this->getKriteriaMapping();
+
+        if (isset($mapping[$kriteriaKode])) {
+            $column = $mapping[$kriteriaKode];
+            return $this->{$column};
+        }
+
+        // Jika tidak ada mapping, return null
+        return null;
+    }
+
+    /**
+     * Mapping antara kode kriteria dengan kolom DataMahasiswa
+     * Ini bisa disesuaikan sesuai kebutuhan atau dibuat dinamis
+     */
+    private function getKriteriaMapping(): array
+    {
+        return [
+            // Contoh mapping - sesuaikan dengan kriteria yang ada
+            'C1' => 'penghasilan_orang_tua',     // Penghasilan Orang Tua
+            'C2' => 'kondisi_rumah',             // Kondisi Tempat Tinggal  
+            'C3' => 'prestasi',                  // Prestasi
+            'C4' => 'support_orang_tua',         // Support Orang Tua
+            'C5' => 'komitmen',                  // Komitmen
+            // Tambahkan mapping lain sesuai kebutuhan
+        ];
+    }
+
+    /**
+     * Get smart mapped value for specific criteria by name (for form auto-population)
+     */
+    public function getSmartMappedValueForKriteria(string $kriteriaNama): mixed
+    {
+        $kriteriaNama = strtolower($kriteriaNama);
+
+        // Smart mapping based on criteria name patterns
+        if (str_contains($kriteriaNama, 'penghasilan') || str_contains($kriteriaNama, 'gaji') || str_contains($kriteriaNama, 'income')) {
+            return (float) $this->penghasilan_orang_tua;
+        }
+
+        if (str_contains($kriteriaNama, 'tempat tinggal') || str_contains($kriteriaNama, 'kondisi') || str_contains($kriteriaNama, 'rumah')) {
+            // Convert kondisi rumah to numeric scale
+            $kondisiMap = [
+                'Sangat Kurang' => 1,
+                'Kurang' => 2,
+                'Cukup' => 3,
+                'Baik' => 4,
+                'Sangat Baik' => 5,
+            ];
+            return $kondisiMap[$this->kondisi_rumah] ?? 3;
+        }
+
+        if (str_contains($kriteriaNama, 'prestasi') || str_contains($kriteriaNama, 'achievement')) {
+            // Convert prestasi text to numeric score
+            $prestasi = $this->prestasi;
+            if (empty($prestasi)) return 1;
+            if (str_contains(strtolower($prestasi), 'juara 1') || str_contains(strtolower($prestasi), 'nasional')) return 5;
+            if (str_contains(strtolower($prestasi), 'juara 2') || str_contains(strtolower($prestasi), 'provinsi')) return 4;
+            if (str_contains(strtolower($prestasi), 'juara 3') || str_contains(strtolower($prestasi), 'kabupaten')) return 3;
+            if (str_contains(strtolower($prestasi), 'juara') || str_contains(strtolower($prestasi), 'lomba')) return 2;
+            return 1;
+        }
+
+        if (str_contains($kriteriaNama, 'pekerjaan') || str_contains($kriteriaNama, 'kerja') || str_contains($kriteriaNama, 'status')) {
+            // Higher score for not working (need scholarship more for Cost criteria)
+            return $this->status_bekerja === 'Tidak Bekerja' ? 5 : 2;
+        }
+
+        if (str_contains($kriteriaNama, 'dukungan') || str_contains($kriteriaNama, 'support') || str_contains($kriteriaNama, 'orang tua')) {
+            $supportMap = [
+                'Kurang Mendukung' => 1,
+                'Cukup Mendukung' => 2,
+                'Mendukung' => 3,
+                'Sangat Mendukung' => 4,
+            ];
+            return $supportMap[$this->support_orang_tua] ?? 3;
+        }
+
+        if (str_contains($kriteriaNama, 'wawancara') || str_contains($kriteriaNama, 'interview')) {
+            // Generate interview score based on support level
+            $supportMap = [
+                'Kurang Mendukung' => 70,
+                'Cukup Mendukung' => 75,
+                'Mendukung' => 80,
+                'Sangat Mendukung' => 85,
+            ];
+            return $supportMap[$this->support_orang_tua] ?? 75;
+        }
+
+        if (str_contains($kriteriaNama, 'nilai') || str_contains($kriteriaNama, 'grade') || str_contains($kriteriaNama, 'rata')) {
+            // Generate academic score based on commitment
+            $komitmenMap = [
+                'Cukup Berkomitmen' => 80,
+                'Berkomitmen' => 85,
+                'Sangat Berkomitmen' => 90,
+            ];
+            return $komitmenMap[$this->komitmen] ?? 80;
+        }
+
+        // Default fallback
+        return 3.0;
+    }
+
+    /**
+     * Generate kode untuk CalonMahasiswa
+     */
+    public function generateKodeCalonMahasiswa(): string
+    {
+        return 'CM-' . str_pad($this->id, 3, '0', STR_PAD_LEFT);
+    }
+            return $this->convertToNumericValue($this->kondisi_rumah, 'kondisi_rumah');
+        }
+
+        if (str_contains($kriteriaNama, 'prestasi') || str_contains($kriteriaNama, 'achievement')) {
+            return $this->convertToNumericValue($this->prestasi, 'prestasi');
+        }
+
+        if (str_contains($kriteriaNama, 'usia') || str_contains($kriteriaNama, 'umur') || str_contains($kriteriaNama, 'age')) {
+            // Default age estimation if not available
+            return rand(17, 22);
+        }
+
+        if (str_contains($kriteriaNama, 'ekonomi') || str_contains($kriteriaNama, 'keuangan')) {
+            return $this->convertToNumericValue($this->kondisi_ekonomi, 'kondisi_ekonomi');
+        }
+
+        if (str_contains($kriteriaNama, 'support') || str_contains($kriteriaNama, 'dukungan')) {
+            return $this->convertToNumericValue($this->support_orang_tua, 'support_orang_tua');
+        }
+
+        if (str_contains($kriteriaNama, 'bekerja') || str_contains($kriteriaNama, 'pekerjaan')) {
+            return $this->convertToNumericValue($this->status_bekerja, 'status_bekerja');
+        }
+
+        if (str_contains($kriteriaNama, 'kip')) {
+            return $this->kip_status === 'Ya' ? 5.0 : 1.0;
+        }
+
+        if (str_contains($kriteriaNama, 'saudara')) {
+            // Scoring: lebih banyak saudara = lebih butuh beasiswa
+            if ($this->jumlah_saudara >= 5) return 5.0;
+            if ($this->jumlah_saudara >= 3) return 4.0;
+            if ($this->jumlah_saudara >= 2) return 3.0;
+            if ($this->jumlah_saudara >= 1) return 2.0;
+            return 1.0;
+        }
+
+        // Default mapping jika tidak ada yang cocok
+        return null;
+    }
+
+    /**
+     * Convert various data types to numeric values for SPK calculation
+     */
+    private function convertToNumericValue($value, string $type): float
+    {
+        if (is_numeric($value)) {
+            return (float) $value;
+        }
+
+        // Convert based on type
+        switch ($type) {
+            case 'penghasilan':
+                // Normalize penghasilan to scale 1-5
+                $penghasilan = (float) $value;
+                if ($penghasilan >= 5000000) return 5.0; // Sangat Tinggi
+                if ($penghasilan >= 3000000) return 4.0; // Tinggi
+                if ($penghasilan >= 2000000) return 3.0; // Sedang
+                if ($penghasilan >= 1000000) return 2.0; // Rendah
+                return 1.0; // Sangat Rendah
+
+            case 'kondisi_rumah':
+                $kondisiMap = [
+                    'Sangat Baik' => 5.0,
+                    'Baik' => 4.0,
+                    'Cukup' => 3.0,
+                    'Kurang' => 2.0,
+                    'Sangat Kurang' => 1.0
+                ];
+                return $kondisiMap[$value] ?? 3.0;
+
+            case 'prestasi':
+                // Scoring prestasi berdasarkan kata kunci
+                $prestasi = strtolower($value ?? '');
+                if (str_contains($prestasi, 'juara 1') || str_contains($prestasi, 'nasional')) return 5.0;
+                if (str_contains($prestasi, 'juara 2') || str_contains($prestasi, 'provinsi')) return 4.0;
+                if (str_contains($prestasi, 'juara 3') || str_contains($prestasi, 'kabupaten')) return 3.5;
+                if (str_contains($prestasi, 'juara') || str_contains($prestasi, 'lomba')) return 3.0;
+                if (!empty($prestasi) && $prestasi != 'tidak ada prestasi khusus') return 2.0;
+                return 1.0;
+
+            case 'kondisi_ekonomi':
+                $ekonomiMap = [
+                    'Surplus' => 5.0,
+                    'Cukup' => 4.0,
+                    'Defisit' => 2.0,
+                    'Berhutang' => 1.0
+                ];
+                return $ekonomiMap[$value] ?? 3.0;
+
+            case 'support_orang_tua':
+                $supportMap = [
+                    'Sangat Mendukung' => 5.0,
+                    'Mendukung' => 4.0,
+                    'Cukup Mendukung' => 3.0,
+                    'Kurang Mendukung' => 2.0
+                ];
+                return $supportMap[$value] ?? 3.0;
+
+            case 'status_bekerja':
+                return $value === 'Bekerja' ? 2.0 : 4.0; // Tidak bekerja = lebih prioritas untuk beasiswa
+
+            default:
+                return 3.0; // Default neutral value
+        }
+    }
+
+    /**
+     * Generate kode otomatis untuk calon mahasiswa
+     */
+    public function generateKodeCalonMahasiswa(): string
+    {
+        // Format: DM001, DM002, dst
+        $lastCalon = CalonMahasiswa::where('data_mahasiswa_id', $this->id)->count();
+        return 'DM' . str_pad($this->id, 3, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Konversi nilai enum ke nilai numerik untuk perhitungan SPK
+     */
+    public function getNumericValueForSPK($column): ?float
+    {
+        $value = $this->{$column};
+
+        // Konversi nilai enum ke numerik berdasarkan konteks beasiswa
+        switch ($column) {
+            case 'kip_status':
+                return $value === 'Ya' ? 5 : 1; // Ya = prioritas tinggi
+
+            case 'orang_tua_status':
+                return match ($value) {
+                    'Keduanya Meninggal' => 5,
+                    'Ayah Meninggal' => 4,
+                    'Ibu Meninggal' => 4,
+                    'Masih Ada' => 2,
+                    default => 1
+                };
+
+            case 'kondisi_rumah':
+                return match ($value) {
+                    'Sangat Kurang' => 5,
+                    'Kurang' => 4,
+                    'Cukup' => 3,
+                    'Baik' => 2,
+                    'Sangat Baik' => 1,
+                    default => 1
+                };
+
+            case 'support_orang_tua':
+                return match ($value) {
+                    'Sangat Mendukung' => 5,
+                    'Mendukung' => 4,
+                    'Cukup Mendukung' => 3,
+                    'Kurang Mendukung' => 2,
+                    default => 1
+                };
+
+            case 'komitmen':
+                return match ($value) {
+                    'Sangat Berkomitmen' => 5,
+                    'Berkomitmen' => 4,
+                    'Cukup Berkomitmen' => 3,
+                    default => 1
+                };
+
+            case 'kondisi_ekonomi':
+                return match ($value) {
+                    'Berhutang' => 5,
+                    'Defisit' => 4,
+                    'Cukup' => 3,
+                    'Surplus' => 1,
+                    default => 1
+                };
+
+                // Untuk nilai numerik langsung
+            case 'penghasilan_orang_tua':
+            case 'jumlah_saudara':
+            case 'daya_listrik':
+                return (float) $value;
+
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Get mapped value for specific criteria
+     */
+    public function getMappedValue(string $kriteriaKode): mixed
+    {
+        $mapping = $this->getCriteriaMapping();
+        
+        if (isset($mapping[$kriteriaKode])) {
+            $column = $mapping[$kriteriaKode];
+            return $this->{$column};
+        }
+        
+        return null;
+    }
+
+    /**
+     * Mapping antara kode kriteria dengan kolom data_mahasiswa
+     */
+    public static function getCriteriaMapping(): array
+    {
+        return [
+            // Mapping default - bisa disesuaikan dengan kriteria yang ada
+            'C1' => 'penghasilan_orang_tua',    // Penghasilan Orang Tua
+            'C2' => 'kondisi_rumah',            // Kondisi Tempat Tinggal  
+            'C3' => 'prestasi',                 // Prestasi
+            'C4' => 'status_bekerja',           // Status Pekerjaan
+            'C5' => 'support_orang_tua',        // Dukungan Orang Tua
+            // Tambah mapping lain sesuai kebutuhan
+        ];
+    }
+
+    /**
+     * Get display name for select options
+     */
+    public function getDisplayNameAttribute(): string
+    {
+        return $this->nama . ' (' . $this->program_studi . ')';
+    }
+
+    /**
+     * Transform data mahasiswa to calon mahasiswa format
+     */
+    public function toCalonMahasiswaData(): array
+    {
+        $data = [
+            'data_mahasiswa_id' => $this->id,
+            'nama' => $this->nama,
+            'kode' => 'CM-' . str_pad($this->id, 3, '0', STR_PAD_LEFT)
+        ];
+
+        // Map values based on active criteria
+        $kriteria = \App\Models\Kriteria::orderBy('kode')->get();
+        $mapping = self::getCriteriaMapping();
+
+        foreach ($kriteria as $k) {
+            $columnName = strtolower(str_replace(' ', '_', $k->nama));
+
+            if (isset($mapping[$k->kode])) {
+                $sourceColumn = $mapping[$k->kode];
+                $data[$columnName] = $this->{$sourceColumn};
+            }
+        }
+
+        return $data;
+    }
+}

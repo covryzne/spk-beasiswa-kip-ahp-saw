@@ -12,10 +12,12 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->command->info('🚀 Starting Database Seeding...');
+        $this->command->newLine();        // Seed Users/Accounts first
+        $this->call(UserSeeder::class);
         $this->command->newLine();
 
-        // Seed Users/Accounts first
-        $this->call(UserSeeder::class);
+        // Seed Master Data Mahasiswa
+        $this->call(DataMahasiswaSeeder::class);
         $this->command->newLine();
 
         // Seed SPK System Data

@@ -2,445 +2,361 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Database\Schema\Blueprint;
 use App\Models\Kriteria;
+use App\Models\DataMahasiswa;
 use App\Models\CalonMahasiswa;
 use App\Models\MatriksAhp;
+use Illuminate\Support\Facades\Schema;
 
 class SPKDataSeeder extends Seeder
 {
     /**
-     * Run the database seeds for SPK system data.
+     * Run the database seeder.
      */
     public function run(): void
     {
-        $this->command->info('🔄 Seeding SPK Data...');
+        $this->command->info('🔄 Starting SPK Data Seeding...');
 
-        // Seed Kriteria
+        // 1. Seed Kriteria
         $this->seedKriteria();
 
-        // Sync calon mahasiswa columns with kriteria after kriteria is created
+        // 2. Sync CalonMahasiswa columns with Kriteria
         $this->syncCalonMahasiswaColumns();
 
-        // Seed Calon Mahasiswa
-        $this->seedCalonMahasiswa();
+        // 3. Seed CalonMahasiswa from existing DataMahasiswa
+        $this->seedCalonMahasiswaFromDataMahasiswa();
 
-        // Seed Matriks AHP
-        $this->seedMatriksAhp();
+        // 4. Generate Default AHP Matrix
+        $this->generateDefaultAhpMatrix();
 
-        $this->command->info('✅ SPK Data seeded successfully!');
+        $this->command->info('✅ SPK Data seeding completed successfully!');
     }
 
+    /**
+     * Seed Kriteria data
+     */
     private function seedKriteria(): void
     {
-        $this->command->info('📋 Seeding Kriteria...');
-
-        $kriteria = [
+        $this->command->info('📝 Seeding Kriteria...');
+        $kriteriaData = [
             [
                 'kode' => 'C1',
                 'nama' => 'Penghasilan Orang Tua',
-                'jenis' => 'cost',
-                'bobot' => null, // Will be calculated by AHP
+                'bobot' => null,
+                'jenis' => 'Cost',
+                'deskripsi' => 'Penghasilan bulanan orang tua/wali (Rp)',
             ],
             [
                 'kode' => 'C2',
                 'nama' => 'Kondisi Tempat Tinggal',
-                'jenis' => 'cost',
                 'bobot' => null,
+                'jenis' => 'Cost',
+                'deskripsi' => 'Kondisi fisik rumah tempat tinggal',
             ],
             [
                 'kode' => 'C3',
-                'nama' => 'Hasil Tes Prestasi',
-                'jenis' => 'benefit',
+                'nama' => 'Prestasi',
                 'bobot' => null,
+                'jenis' => 'Benefit',
+                'deskripsi' => 'Prestasi akademik atau non-akademik',
             ],
             [
                 'kode' => 'C4',
-                'nama' => 'Hasil Tes Wawancara',
-                'jenis' => 'benefit',
+                'nama' => 'Status Pekerjaan',
                 'bobot' => null,
+                'jenis' => 'Cost',
+                'deskripsi' => 'Status pekerjaan saat ini',
             ],
             [
                 'kode' => 'C5',
-                'nama' => 'Rata-Rata Nilai',
-                'jenis' => 'benefit',
+                'nama' => 'Dukungan Orang Tua',
                 'bobot' => null,
+                'jenis' => 'Benefit',
+                'deskripsi' => 'Tingkat dukungan orang tua/wali',
             ],
         ];
 
-        foreach ($kriteria as $k) {
-            Kriteria::updateOrCreate(['kode' => $k['kode']], $k);
+        foreach ($kriteriaData as $data) {
+            Kriteria::firstOrCreate(
+                ['kode' => $data['kode']],
+                $data
+            );
         }
 
-        $this->command->info('   ✓ 5 Kriteria created');
-    }
-
-    private function seedCalonMahasiswa(): void
-    {
-        $this->command->info('👥 Seeding Calon Mahasiswa...');
-
-        // Get available kriteria
-        $kriteria = Kriteria::orderBy('kode')->get();
-
-        // Base candidate data
-        $baseCandidates = [
-            [
-                'kode' => 'A01',
-                'nama' => 'Ahmad Fauzi',
-                'catatan' => 'Kandidat dengan prestasi akademik tinggi',
-            ],
-            [
-                'kode' => 'A02',
-                'nama' => 'Siti Nurhaliza',
-                'catatan' => 'Calon mahasiswa berprestasi dari keluarga kurang mampu',
-            ],
-            [
-                'kode' => 'A03',
-                'nama' => 'Budi Santoso',
-                'catatan' => 'Kandidat dengan stabilitas finansial menengah',
-            ],
-            [
-                'kode' => 'A04',
-                'nama' => 'Dewi Sartika',
-                'catatan' => 'Calon mahasiswa dari daerah terpencil dengan prestasi baik',
-            ],
-            [
-                'kode' => 'A05',
-                'nama' => 'Rizki Pratama',
-                'catatan' => 'Kandidat dengan potensi akademik yang baik',
-            ],
-            [
-                'kode' => 'A06',
-                'nama' => 'Indira Kusuma',
-                'catatan' => 'Calon mahasiswa dengan prestasi akademik excellent',
-            ],
-            [
-                'kode' => 'A07',
-                'nama' => 'Hendra Wijaya',
-                'catatan' => 'Kandidat dengan akses pendidikan yang baik',
-            ],
-            [
-                'kode' => 'A08',
-                'nama' => 'Maya Sari',
-                'catatan' => 'Calon mahasiswa sangat membutuhkan dengan prestasi tinggi',
-            ],
-            [
-                'kode' => 'A09',
-                'nama' => 'Andi Susanto',
-                'catatan' => 'Kandidat dengan latar belakang seimbang',
-            ],
-            [
-                'kode' => 'A10',
-                'nama' => 'Agus Suryanto',
-                'catatan' => 'Calon mahasiswa sangat berprestasi dari keluarga tidak mampu',
-            ],
-        ];
-
-        // Generate nilai for each candidate based on available kriteria
-        foreach ($baseCandidates as $index => $candidate) {
-            $nilai = $this->generateNilaiForCandidate($kriteria, $index);
-            $candidate = array_merge($candidate, $nilai);
-
-            CalonMahasiswa::updateOrCreate(['kode' => $candidate['kode']], $candidate);
-        }
-
-        $this->command->info('   ✓ ' . count($baseCandidates) . ' Calon Mahasiswa created');
+        $this->command->info('   ✅ Kriteria seeded successfully!');
     }
 
     /**
-     * Generate nilai for candidate based on available kriteria
+     * Sync CalonMahasiswa table columns with Kriteria
      */
-    private function generateNilaiForCandidate($kriteria, $candidateIndex): array
+    private function syncCalonMahasiswaColumns(): void
     {
-        $nilai = [];
+        $this->command->info('🔄 Syncing CalonMahasiswa columns...');
 
-        foreach ($kriteria as $k) {
-            $fieldName = strtolower($k->kode);
+        try {
+            // Get all kriteria codes
+            $kriteriaCodes = Kriteria::pluck('kode')->map(fn($code) => strtolower($code))->toArray();
 
-            // Generate realistic values based on criteria type and name pattern
-            $nilai[$fieldName] = $this->generateValueForCriteria($k, $candidateIndex);
+            // Get existing columns
+            $existingColumns = Schema::getColumnListing('calon_mahasiswa');
+
+            // Define base columns that should always exist
+            $baseColumns = ['id', 'kode', 'nama', 'catatan', 'data_mahasiswa_id', 'created_at', 'updated_at'];
+
+            // Add missing kriteria columns
+            foreach ($kriteriaCodes as $column) {
+                if (!in_array($column, $existingColumns)) {
+                    Schema::table('calon_mahasiswa', function ($table) use ($column) {
+                        $table->decimal($column, 10, 2)->nullable()->after('catatan');
+                    });
+                    $this->command->info("   ➕ Added column: {$column}");
+                }
+            }
+
+            // Remove extra columns that are not in kriteria or base columns
+            $allowedColumns = array_merge($baseColumns, $kriteriaCodes);
+            foreach ($existingColumns as $column) {
+                if (!in_array($column, $allowedColumns)) {
+                    // Only drop if it's a criteria-like column (c1, c2, etc.)
+                    if (preg_match('/^c\d+$/', $column)) {
+                        Schema::table('calon_mahasiswa', function ($table) use ($column) {
+                            $table->dropColumn($column);
+                        });
+                        $this->command->info("   ➖ Removed column: {$column}");
+                    }
+                }
+            }
+
+            $this->command->info('   ✅ CalonMahasiswa columns synced successfully!');
+        } catch (\Exception $e) {
+            $this->command->warn("   ⚠️ Error syncing columns: " . $e->getMessage());
         }
-
-        return $nilai;
     }
 
     /**
-     * Generate appropriate value for specific criteria based on its type and name
+     * Seed CalonMahasiswa from existing DataMahasiswa
      */
-    private function generateValueForCriteria($kriteria, $candidateIndex): mixed
+    private function seedCalonMahasiswaFromDataMahasiswa(): void
     {
-        $kriteriaName = strtolower($kriteria->nama);
-        $kriteriaType = strtolower($kriteria->jenis);
+        $this->command->info('📝 Seeding CalonMahasiswa from DataMahasiswa...');
 
-        // Detect criteria type based on name patterns
-        if (str_contains($kriteriaName, 'penghasilan') || str_contains($kriteriaName, 'gaji') || str_contains($kriteriaName, 'income')) {
-            // Income/salary - cost criteria (lower is better) - in Rupiah
-            $incomes = [2500000, 1800000, 3200000, 1500000, 2800000, 2000000, 3500000, 1200000, 2700000, 1000000];
-            return $incomes[$candidateIndex] ?? rand(1000000, 3500000);
-        }
+        $dataMahasiswaList = DataMahasiswa::all();
 
-        if (str_contains($kriteriaName, 'tempat tinggal') || str_contains($kriteriaName, 'lokasi') || str_contains($kriteriaName, 'kondisi')) {
-            // Housing/location - cost criteria (lower is better) - scale 1-5
-            $locations = [3, 2, 4, 1, 3, 2, 5, 1, 4, 1];
-            return $locations[$candidateIndex] ?? rand(1, 5);
-        }
-
-        if (str_contains($kriteriaName, 'prestasi') || str_contains($kriteriaName, 'achievement')) {
-            // Achievement scores - benefit criteria (higher is better) - scale 60-100
-            $achievements = [85, 92, 78, 88, 82, 90, 76, 86, 81, 94];
-            return $achievements[$candidateIndex] ?? rand(70, 95);
-        }
-
-        if (str_contains($kriteriaName, 'wawancara') || str_contains($kriteriaName, 'interview')) {
-            // Interview scores - benefit criteria (higher is better) - scale 60-100
-            $interviews = [80, 88, 75, 85, 79, 87, 72, 83, 78, 92];
-            return $interviews[$candidateIndex] ?? rand(70, 90);
-        }
-
-        if (str_contains($kriteriaName, 'nilai') || str_contains($kriteriaName, 'grade') || str_contains($kriteriaName, 'rata')) {
-            // Academic grades - benefit criteria (higher is better) - scale 60-100
-            $grades = [87, 90, 82, 89, 84, 91, 79, 88, 83, 93];
-            return $grades[$candidateIndex] ?? rand(75, 95);
-        }
-
-        if (str_contains($kriteriaName, 'usia') || str_contains($kriteriaName, 'umur') || str_contains($kriteriaName, 'age')) {
-            // Age - typically cost criteria (younger might be better) - scale 17-25
-            $ages = [19, 18, 20, 17, 19, 18, 21, 17, 20, 18];
-            return $ages[$candidateIndex] ?? rand(17, 23);
-        }
-
-        if (str_contains($kriteriaName, 'jarak') || str_contains($kriteriaName, 'distance')) {
-            // Distance - cost criteria (closer is better) - in km
-            $distances = [5, 12, 3, 25, 8, 15, 2, 30, 10, 35];
-            return $distances[$candidateIndex] ?? rand(1, 40);
-        }
-
-        // Generic fallback based on criteria type
-        if ($kriteriaType === 'cost') {
-            // Cost criteria: lower values are better
-            $costValues = [1, 2, 3, 4, 5, 2, 1, 4, 3, 5];
-            return $costValues[$candidateIndex] ?? rand(1, 5);
-        } else {
-            // Benefit criteria: higher values are better
-            $benefitValues = [85, 92, 78, 88, 82, 90, 76, 86, 81, 94];
-            return $benefitValues[$candidateIndex] ?? rand(70, 95);
-        }
-    }
-
-    private function seedMatriksAhp(): void
-    {
-        $this->command->info('🔢 Seeding Matriks AHP...');
-
-        // Get all kriteria ordered by kode
-        $kriteria = Kriteria::orderBy('kode')->get();
-
-        if ($kriteria->isEmpty()) {
-            $this->command->warn('   ⚠️  No kriteria found, skipping AHP matrix seeding');
+        if ($dataMahasiswaList->isEmpty()) {
+            $this->command->warn('   ⚠️ No DataMahasiswa found! Make sure to run DataMahasiswaSeeder first.');
             return;
         }
 
-        $totalPairs = 0;
+        foreach ($dataMahasiswaList as $dataMahasiswa) {
+            // Check if CalonMahasiswa already exists for this DataMahasiswa
+            $existingCalon = CalonMahasiswa::where('data_mahasiswa_id', $dataMahasiswa->id)->first();
 
-        // Generate pairwise comparison matrix for all criteria combinations
-        foreach ($kriteria as $i => $kriteria1) {
-            foreach ($kriteria as $j => $kriteria2) {
-                // Generate comparison value
-                $nilai = $this->generateAhpComparisonValue($kriteria1, $kriteria2, $i, $j);
+            if (!$existingCalon) {
+                // Create new CalonMahasiswa with mapped values
+                $calonData = $this->mapDataMahasiswaToCalonMahasiswa($dataMahasiswa);
+                CalonMahasiswa::create($calonData);
 
-                MatriksAhp::updateOrCreate(
-                    [
-                        'kriteria_1_id' => $kriteria1->id,
-                        'kriteria_2_id' => $kriteria2->id
-                    ],
-                    [
-                        'kriteria_1_id' => $kriteria1->id,
-                        'kriteria_2_id' => $kriteria2->id,
-                        'nilai' => $nilai
-                    ]
-                );
+                $this->command->info("   ➕ Created CalonMahasiswa: {$dataMahasiswa->nama}");
+            } else {
+                // Update existing CalonMahasiswa with latest mapped values
+                $calonData = $this->mapDataMahasiswaToCalonMahasiswa($dataMahasiswa);
+                unset($calonData['kode']); // Don't update kode
+                $existingCalon->update($calonData);
 
-                $totalPairs++;
+                $this->command->info("   🔄 Updated CalonMahasiswa: {$dataMahasiswa->nama}");
             }
         }
 
-        $this->command->info("   ✓ {$totalPairs} Matriks AHP entries created for " . $kriteria->count() . " criteria");
+        $this->command->info('   ✅ CalonMahasiswa seeded successfully!');
     }
 
     /**
-     * Generate AHP comparison value between two criteria
+     * Map DataMahasiswa to CalonMahasiswa format
      */
-    private function generateAhpComparisonValue($kriteria1, $kriteria2, $index1, $index2): float
+    private function mapDataMahasiswaToCalonMahasiswa(DataMahasiswa $dataMahasiswa): array
     {
-        // Diagonal elements (same criteria comparison)
+        $data = [
+            'data_mahasiswa_id' => $dataMahasiswa->id,
+            'nama' => $dataMahasiswa->nama,
+            'kode' => 'CM-' . str_pad($dataMahasiswa->id, 3, '0', STR_PAD_LEFT),
+            'catatan' => 'Auto-generated from DataMahasiswa',
+        ];
+
+        // Get kriteria mapping
+        $mapping = DataMahasiswa::getCriteriaMapping();
+        $kriteria = Kriteria::orderBy('kode')->get();
+
+        foreach ($kriteria as $k) {
+            $column = strtolower($k->kode);
+
+            if (isset($mapping[$k->kode])) {
+                $sourceColumn = $mapping[$k->kode];
+                $rawValue = $dataMahasiswa->{$sourceColumn};
+
+                // Convert to numeric value for SPK calculation
+                $numericValue = $this->convertToNumericValue($sourceColumn, $rawValue);
+                $data[$column] = $numericValue;
+            } else {
+                // Default value if no mapping found
+                $data[$column] = rand(1, 5);
+            }
+        }
+
+        return $data;
+    }
+    /**
+     * Convert various data types to numeric values for SPK
+     * Updated scoring system: Cost (lower = better), Benefit (higher = better)
+     */
+    private function convertToNumericValue(string $column, $value): float
+    {
+        if (is_numeric($value)) {
+            return (float) $value;
+        }
+
+        // Convert based on column type with proper Cost/Benefit scoring
+        switch ($column) {
+            case 'penghasilan_orang_tua':
+                return (float) $value; // Already numeric
+
+            case 'kondisi_rumah':
+                // COST: Kondisi buruk = nilai kecil = prioritas tinggi
+                $kondisiMap = [
+                    'Sangat Kurang' => 1,  // Prioritas tertinggi
+                    'Kurang' => 2,
+                    'Cukup' => 3,
+                    'Baik' => 4,
+                    'Sangat Baik' => 5,    // Prioritas terendah
+                ];
+                return $kondisiMap[$value] ?? 3;
+            case 'prestasi':
+                // BENEFIT: Prestasi tinggi = nilai besar = prioritas tinggi (0-100 scale)
+                if (is_numeric($value)) {
+                    return (float) $value; // Direct numeric input
+                }
+
+                // Text-based prestasi conversion to 0-100 scale
+                if (empty($value) || strtolower($value) === 'tidak ada prestasi khusus') return 0;
+                if (str_contains(strtolower($value), 'juara 1') || str_contains(strtolower($value), 'nasional')) return 100;
+                if (str_contains(strtolower($value), 'juara 2') || str_contains(strtolower($value), 'provinsi')) return 85;
+                if (str_contains(strtolower($value), 'juara 3') || str_contains(strtolower($value), 'kabupaten')) return 75;
+                if (str_contains(strtolower($value), 'juara') || str_contains(strtolower($value), 'lomba')) return 60;
+                if (str_contains(strtolower($value), 'sertifikat') || str_contains(strtolower($value), 'pelatihan')) return 40;
+                return 20; // Ada prestasi tapi tidak spesifik
+
+            case 'status_bekerja':
+                // COST: Tidak bekerja = butuh beasiswa = nilai kecil = prioritas tinggi
+                // Binary options: 1 dan 2 (avoid 0 for SAW calculation)
+                return $value === 'Tidak Bekerja' ? 1 : 2;
+
+            case 'support_orang_tua':
+                // BENEFIT: Dukungan tinggi = nilai besar = prioritas tinggi
+                $supportMap = [
+                    'Kurang Mendukung' => 1,
+                    'Cukup Mendukung' => 2,
+                    'Mendukung' => 3,
+                    'Sangat Mendukung' => 4,
+                ];
+                return $supportMap[$value] ?? 2;
+
+            default:
+                return 2.0; // Default neutral value
+        }
+    }
+
+    /**
+     * Generate default AHP matrix for kriteria
+     */
+    private function generateDefaultAhpMatrix(): void
+    {
+        $this->command->info('🔢 Generating default AHP matrix...');
+
+        $kriteria = Kriteria::orderBy('kode')->get();
+
+        if ($kriteria->count() < 2) {
+            $this->command->warn('   ⚠️ Need at least 2 criteria for AHP matrix');
+            return;
+        }
+
+        foreach ($kriteria as $i => $kriteriaI) {
+            foreach ($kriteria as $j => $kriteriaJ) {
+                // Check if matrix entry already exists
+                $existing = MatriksAhp::where('kriteria_1_id', $kriteriaI->id)
+                    ->where('kriteria_2_id', $kriteriaJ->id)
+                    ->first();
+
+                if (!$existing) {
+                    $nilai = $this->generateDefaultComparisonValue($kriteriaI, $kriteriaJ);
+
+                    MatriksAhp::create([
+                        'kriteria_1_id' => $kriteriaI->id,
+                        'kriteria_2_id' => $kriteriaJ->id,
+                        'nilai' => $nilai
+                    ]);
+                }
+            }
+        }
+
+        $this->command->info('   ✅ Default AHP matrix generated successfully!');
+    }
+
+    /**
+     * Generate default comparison value between two criteria
+     */
+    private function generateDefaultComparisonValue($kriteria1, $kriteria2): float
+    {
+        // Same criteria
         if ($kriteria1->id === $kriteria2->id) {
             return 1.0;
         }
 
-        // Create consistent comparison values based on criteria names and types
+        // Get priority weights based on criteria names for scholarship context
         $priority1 = $this->getCriteriaPriority($kriteria1);
         $priority2 = $this->getCriteriaPriority($kriteria2);
 
-        // Calculate comparison based on priority difference
         $priorityDiff = $priority1 - $priority2;
 
         if ($priorityDiff > 0) {
-            // Kriteria1 is more important than Kriteria2
-            $scale = min(abs($priorityDiff) + 1, 9); // AHP scale 1-9
+            $scale = min(abs($priorityDiff) + 1, 9);
             return (float) $scale;
         } elseif ($priorityDiff < 0) {
-            // Kriteria2 is more important than Kriteria1
             $scale = min(abs($priorityDiff) + 1, 9);
             return round(1.0 / $scale, 2);
         } else {
-            // Equal importance
             return 1.0;
         }
     }
 
     /**
-     * Get priority weight for criteria based on its characteristics
+     * Get priority weight for criteria based on scholarship context
      */
     private function getCriteriaPriority($kriteria): int
     {
         $kriteriaName = strtolower($kriteria->nama);
 
         // Higher number = higher priority in scholarship selection
-
-        // Financial need criteria (highest priority)
         if (str_contains($kriteriaName, 'penghasilan') || str_contains($kriteriaName, 'gaji') || str_contains($kriteriaName, 'income')) {
-            return 5; // Very high priority
+            return 5; // Very high priority - economic need
         }
 
-        if (str_contains($kriteriaName, 'tempat tinggal') || str_contains($kriteriaName, 'kondisi') || str_contains($kriteriaName, 'ekonomi')) {
-            return 4; // High priority
-        }
-
-        // Academic criteria (medium-high priority)
-        if (str_contains($kriteriaName, 'nilai') || str_contains($kriteriaName, 'grade') || str_contains($kriteriaName, 'rata')) {
-            return 4; // High priority
+        if (str_contains($kriteriaName, 'tempat tinggal') || str_contains($kriteriaName, 'kondisi') || str_contains($kriteriaName, 'rumah')) {
+            return 4; // High priority - living conditions
         }
 
         if (str_contains($kriteriaName, 'prestasi') || str_contains($kriteriaName, 'achievement')) {
-            return 3; // Medium-high priority
+            return 3; // Medium-high priority - academic merit
         }
 
-        // Soft skills criteria (medium priority)
-        if (str_contains($kriteriaName, 'wawancara') || str_contains($kriteriaName, 'interview')) {
-            return 2; // Medium priority
+        if (str_contains($kriteriaName, 'dukungan') || str_contains($kriteriaName, 'support')) {
+            return 3; // Medium priority - family support
         }
 
-        // Other criteria (lower priority)
-        if (str_contains($kriteriaName, 'usia') || str_contains($kriteriaName, 'umur') || str_contains($kriteriaName, 'age')) {
-            return 1; // Lower priority
-        }
-
-        if (str_contains($kriteriaName, 'jarak') || str_contains($kriteriaName, 'distance')) {
-            return 1; // Lower priority
+        if (str_contains($kriteriaName, 'pekerjaan') || str_contains($kriteriaName, 'kerja') || str_contains($kriteriaName, 'job')) {
+            return 2; // Medium priority - work status
         }
 
         // Default priority based on criteria type
-        return $kriteria->jenis === 'cost' ? 3 : 2; // Cost criteria generally more important for scholarships
-    }
-
-    /**
-     * Sync calon mahasiswa columns with existing kriteria
-     */
-    private function syncCalonMahasiswaColumns(): void
-    {
-        $this->command->info('🔗 Syncing calon mahasiswa columns with kriteria...');
-
-        try {
-            // Get existing kriteria codes
-            $existingKriteria = Kriteria::pluck('kode')->map(fn($code) => strtolower($code))->toArray();
-
-            if (empty($existingKriteria)) {
-                $this->command->warn('   ⚠️  No kriteria found, skipping column sync');
-                return;
-            }
-
-            // Define max possible columns
-            $allPossibleColumns = [
-                'c1',
-                'c2',
-                'c3',
-                'c4',
-                'c5',
-                'c6',
-                'c7',
-                'c8',
-                'c9',
-                'c10',
-                'c11',
-                'c12',
-                'c13',
-                'c14',
-                'c15',
-                'c16',
-                'c17',
-                'c18',
-                'c19',
-                'c20'
-            ];
-
-            Schema::table('calon_mahasiswa', function (Blueprint $table) use ($existingKriteria, $allPossibleColumns) {
-                foreach ($allPossibleColumns as $column) {
-                    // If criteria doesn't exist but column exists in database, drop it
-                    if (!in_array($column, $existingKriteria) && Schema::hasColumn('calon_mahasiswa', $column)) {
-                        $table->dropColumn($column);
-                        $this->command->warn("   🗑️  Dropped unused column: {$column}");
-                    }
-                    // If criteria exists but column doesn't exist, add it
-                    elseif (in_array($column, $existingKriteria) && !Schema::hasColumn('calon_mahasiswa', $column)) {
-                        $this->addColumnWithAppropriateType($table, $column);
-                        $this->command->info("   ➕ Added column: {$column}");
-                    }
-                }
-            });
-
-            $this->command->info("   ✓ Synced with " . count($existingKriteria) . " kriteria columns");
-        } catch (\Exception $e) {
-            $this->command->error('   ❌ Failed to sync columns: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Add column with appropriate data type based on criteria name patterns
-     */
-    private function addColumnWithAppropriateType($table, $columnName): void
-    {
-        try {
-            $kriteria = Kriteria::where('kode', strtoupper($columnName))->first();
-
-            if ($kriteria) {
-                $kriteriaName = strtolower($kriteria->nama);
-
-                // Determine appropriate data type based on criteria name
-                if (str_contains($kriteriaName, 'penghasilan') || str_contains($kriteriaName, 'gaji') || str_contains($kriteriaName, 'income')) {
-                    // Income/salary - use bigInteger for large numbers
-                    $table->bigInteger($columnName)->nullable();
-                } elseif (str_contains($kriteriaName, 'tempat tinggal') || str_contains($kriteriaName, 'lokasi') || str_contains($kriteriaName, 'kondisi')) {
-                    // Housing/location - use small integer (1-5 scale)
-                    $table->tinyInteger($columnName)->nullable();
-                } elseif (str_contains($kriteriaName, 'usia') || str_contains($kriteriaName, 'umur') || str_contains($kriteriaName, 'age')) {
-                    // Age - use small integer
-                    $table->tinyInteger($columnName)->nullable();
-                } elseif (str_contains($kriteriaName, 'jarak') || str_contains($kriteriaName, 'distance')) {
-                    // Distance - use decimal for precision
-                    $table->decimal($columnName, 8, 2)->nullable();
-                } else {
-                    // Academic scores, achievements, etc. - use decimal for precision
-                    $table->decimal($columnName, 8, 2)->nullable();
-                }
-            } else {
-                // Fallback to decimal if criteria not found
-                $table->decimal($columnName, 8, 2)->nullable();
-            }
-        } catch (\Exception $e) {
-            // Fallback to decimal if any error occurs
-            $table->decimal($columnName, 8, 2)->nullable();
-        }
+        return $kriteria->jenis === 'Cost' ? 3 : 2;
     }
 }

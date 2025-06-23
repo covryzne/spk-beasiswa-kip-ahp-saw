@@ -16,6 +16,7 @@ class CalonMahasiswa extends Model
         'kode',
         'nama',
         'catatan',
+        'data_mahasiswa_id', // Relasi ke DataMahasiswa
     ];
 
     /**
@@ -23,12 +24,89 @@ class CalonMahasiswa extends Model
      */
     public function getFillable()
     {
-        $baseFillable = ['kode', 'nama', 'catatan'];
+        $baseFillable = ['kode', 'nama', 'catatan', 'data_mahasiswa_id'];
 
         // Add criteria columns dynamically
         $criteriaColumns = $this->getCriteriaColumns();
 
         return array_merge($baseFillable, $criteriaColumns);
+    }
+
+    /**
+     * Relasi ke DataMahasiswa
+     */
+    public function dataMahasiswa()
+    {
+        return $this->belongsTo(DataMahasiswa::class, 'data_mahasiswa_id');
+    }
+
+    /**
+     * Auto-populate data dari DataMahasiswa berdasarkan kriteria aktif
+     */
+    public function populateFromDataMahasiswa(): void
+    {
+        if (!$this->dataMahasiswa) {
+            return;
+        }
+
+        // Get active criteria
+        $kriteria = Kriteria::orderBy('kode')->get();
+
+        foreach ($kriteria as $k) {
+            $column = strtolower($k->kode);
+
+            // Smart mapping dari DataMahasiswa
+            $value = $this->dataMahasiswa->getSmartMappedValueForKriteria($k->nama);
+
+            if ($value !== null) {
+                // Convert to numeric value if needed for SPK calculation
+                if ($k->jenis === 'Cost' || $k->jenis === 'Benefit') {
+                    $value = $this->dataMahasiswa->getNumericValueForSPK($this->findDataMahasiswaColumn($k->nama));
+                }
+
+                $this->{$column} = $value;
+            }
+        }
+
+        // Auto-generate nama and kode if not set
+        if (!$this->nama && $this->dataMahasiswa) {
+            $this->nama = $this->dataMahasiswa->nama;
+        }
+
+        if (!$this->kode && $this->dataMahasiswa) {
+            $this->kode = $this->dataMahasiswa->generateKodeCalonMahasiswa();
+        }
+    }
+
+    /**
+     * Find corresponding DataMahasiswa column for criteria name
+     */
+    private function findDataMahasiswaColumn($kriteriaNama): ?string
+    {
+        $kriteriaNama = strtolower($kriteriaNama);
+
+        // Mapping logic similar to DataMahasiswa
+        if (str_contains($kriteriaNama, 'penghasilan')) {
+            return 'penghasilan_orang_tua';
+        }
+
+        if (str_contains($kriteriaNama, 'kondisi') || str_contains($kriteriaNama, 'tempat tinggal')) {
+            return 'kondisi_rumah';
+        }
+
+        if (str_contains($kriteriaNama, 'prestasi')) {
+            return 'prestasi';
+        }
+
+        if (str_contains($kriteriaNama, 'support') || str_contains($kriteriaNama, 'dukungan')) {
+            return 'support_orang_tua';
+        }
+
+        if (str_contains($kriteriaNama, 'komitmen')) {
+            return 'komitmen';
+        }
+
+        return null;
     }
 
     /**
@@ -243,5 +321,162 @@ class CalonMahasiswa extends Model
     public function scopeOrderByKodeNatural($query)
     {
         return $query->orderByRaw('LENGTH(kode), kode');
+    }
+
+    /**
+     * Boot method untuk handle saving dengan konversi dropdown ke numeric
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($model) {
+            $model->convertDropdownValuesToNumeric();
+        });
+    }
+
+    /**
+     * Convert dropdown values to numeric for SPK calculation
+     */
+    private function convertDropdownValuesToNumeric(): void
+    {
+        $kriteria = Kriteria::orderBy('kode')->get();
+
+        foreach ($kriteria as $k) {
+            $columnName = strtolower($k->kode);
+            $value = $this->{$columnName};
+
+            if ($value !== null) {
+                // Get dropdown options for this criteria
+                $dropdownOptions = $k->getDropdownOptions();
+
+                // If this criteria uses dropdown and value is not numeric
+                if (!empty($dropdownOptions) && !is_numeric($value)) {
+                    // Convert using DataMahasiswa converter
+                    $numericValue = app(DataMahasiswa::class)->convertToNumericValue($value, $k->nama);
+                    $this->{$columnName} = $numericValue;
+                }
+            }
+        }
+    }
+
+    /**
+     * Convert single dropdown value to numeric based on criteria name
+     */
+    private function convertDropdownValueToNumeric($value, string $kriteriaName): float
+    {
+        $kriteriaName = strtolower($kriteriaName);
+
+        if (str_contains($kriteriaName, 'kondisi') || str_contains($kriteriaName, 'tempat tinggal')) {
+            $kondisiMap = [
+                'Sangat Kurang' => 1,
+                'Kurang' => 2,
+                'Cukup' => 3,
+                'Baik' => 4,
+                'Sangat Baik' => 5,
+            ];
+            return $kondisiMap[$value] ?? 3;
+        }
+
+        if (str_contains($kriteriaName, 'pekerjaan') || str_contains($kriteriaName, 'kerja')) {
+            return $value === 'Tidak Bekerja' ? 5 : 2; // Higher score for not working
+        }
+
+        if (str_contains($kriteriaName, 'dukungan') || str_contains($kriteriaName, 'support')) {
+            $supportMap = [
+                'Kurang Mendukung' => 1,
+                'Cukup Mendukung' => 2,
+                'Mendukung' => 3,
+                'Sangat Mendukung' => 4,
+            ];
+            return $supportMap[$value] ?? 3;
+        }
+
+        // Default return as is if already numeric or unknown type
+        return is_numeric($value) ? (float) $value : 3.0;
+    }
+
+    /**
+     * Convert dropdown values to numeric for SPK calculation
+     * This will be called when saving data to ensure numeric values for calculation
+     */
+    protected static function booted()
+    {
+        static::saving(function ($model) {
+            $kriteria = \App\Models\Kriteria::orderBy('kode')->get();
+            $dataMahasiswa = new \App\Models\DataMahasiswa();
+
+            foreach ($kriteria as $k) {
+                $fieldName = strtolower($k->kode);
+                $rawValue = $model->{$fieldName};
+
+                // Convert dropdown values to numeric based on criteria type
+                if ($rawValue !== null && !is_numeric($rawValue)) {
+                    // Get converted numeric value
+                    $numericValue = $dataMahasiswa->convertToNumericValue($rawValue, $k->nama);
+                    $model->{$fieldName} = $numericValue;
+                }
+            }
+        });
+    }
+
+    /**
+     * Get raw string value from numeric value for form display
+     */
+    public function getRawValueForKriteria(string $kriteriaName): mixed
+    {
+        $kriteriaName = strtolower($kriteriaName);
+        $kriteria = \App\Models\Kriteria::where('nama', 'like', '%' . $kriteriaName . '%')->first();
+
+        if (!$kriteria) {
+            return null;
+        }
+
+        $fieldName = strtolower($kriteria->kode);
+        $numericValue = $this->{$fieldName};
+
+        // If we have DataMahasiswa, use raw value from there (preferred)
+        if ($this->dataMahasiswa) {
+            return $this->dataMahasiswa->getRawMappedValueForKriteria($kriteriaName);
+        }
+
+        // Otherwise, reverse map from numeric value to string
+        return $this->reverseMapNumericToString($kriteriaName, $numericValue);
+    }
+
+    /**
+     * Reverse map numeric value back to string for dropdown
+     */
+    private function reverseMapNumericToString(string $kriteriaName, $numericValue): mixed
+    {
+        $kriteriaName = strtolower($kriteriaName);
+
+        if (str_contains($kriteriaName, 'kondisi') || str_contains($kriteriaName, 'tempat tinggal')) {
+            $kondisiMap = [
+                1 => 'Sangat Kurang',
+                2 => 'Kurang',
+                3 => 'Cukup',
+                4 => 'Baik',
+                5 => 'Sangat Baik'
+            ];
+            return $kondisiMap[$numericValue] ?? 'Cukup';
+        }
+
+        if (str_contains($kriteriaName, 'pekerjaan') || str_contains($kriteriaName, 'kerja')) {
+            return $numericValue == 1 ? 'Tidak Bekerja' : 'Bekerja';
+        }
+
+        if (str_contains($kriteriaName, 'dukungan') || str_contains($kriteriaName, 'support')) {
+            $supportMap = [
+                1 => 'Kurang Mendukung',
+                2 => 'Cukup Mendukung',
+                3 => 'Mendukung',
+                4 => 'Sangat Mendukung'
+            ];
+            return $supportMap[$numericValue] ?? 'Cukup Mendukung';
+        }
+
+        // For numeric fields (penghasilan, prestasi), return as is
+        return $numericValue;
     }
 }

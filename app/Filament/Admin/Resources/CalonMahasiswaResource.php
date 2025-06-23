@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\CalonMahasiswaResource\Pages;
 use App\Filament\Admin\Resources\CalonMahasiswaResource\RelationManagers;
 use App\Models\CalonMahasiswa;
 use App\Models\Kriteria;
+use App\Models\DataMahasiswa;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -41,10 +42,47 @@ class CalonMahasiswaResource extends Resource
         return parent::getEloquentQuery()->orderByKodeNatural();
     }
 
-    // app/Filament/Admin/Resources/CalonMahasiswaResource.php
     public static function form(Form $form): Form
     {
         return $form->schema([
+            Section::make('Pilih Data Mahasiswa')
+                ->description('Pilih dari data master mahasiswa atau input manual')
+                ->schema([
+                    Select::make('data_mahasiswa_id')
+                        ->label('Data Mahasiswa')
+                        ->options(DataMahasiswa::all()->pluck('display_name', 'id'))
+                        ->searchable()
+                        ->nullable()
+                        ->placeholder('Pilih data mahasiswa atau kosongkan untuk input manual')
+                        ->helperText('Jika dipilih, data akan otomatis terisi dari master data mahasiswa')
+                        ->live()
+                        ->afterStateUpdated(function ($state, Forms\Set $set) {
+                            if ($state) {
+                                $dataMahasiswa = DataMahasiswa::find($state);
+                                if ($dataMahasiswa) {
+                                    // Auto-populate basic data
+                                    $set('nama', $dataMahasiswa->nama);
+                                    $set('kode', $dataMahasiswa->generateKodeCalonMahasiswa());
+
+                                    // Auto-populate criteria values using raw mapping
+                                    $kriteria = Kriteria::orderBy('kode')->get();
+
+                                    foreach ($kriteria as $k) {
+                                        $fieldName = strtolower($k->kode);
+
+                                        // Use raw mapped value for form (not converted to numeric)
+                                        $rawValue = $dataMahasiswa->getRawMappedValueForKriteria($k->nama);
+                                        if ($rawValue !== null) {
+                                            $set($fieldName, $rawValue);
+                                        }
+                                    }
+                                }
+                            }
+                        }),
+                ])
+                ->collapsible()
+                ->collapsed(fn($record) => $record !== null), // Collapsed on edit, expanded on create
+
             Section::make('Data Dasar')
                 ->description('Informasi dasar calon mahasiswa')
                 ->schema([
@@ -113,32 +151,44 @@ class CalonMahasiswaResource extends Resource
         $description = $kriteria->deskripsi ?? '';
         $jenis = $kriteria->jenis;
 
-        // Dynamic field generation based on nama kriteria (content-based detection)
-        if (stripos($label, 'penghasilan') !== false || stripos($label, 'gaji') !== false) {
-            // Penghasilan - numeric field for money
+        // Check if criteria should use dropdown based on DataMahasiswa enum values
+        $dropdownOptions = $kriteria->getDropdownOptions();
+
+        if (!empty($dropdownOptions)) {
+            // Use dropdown for enum fields (without mapping values in options)
+            return Select::make($fieldName)
+                ->label($label)
+                ->options($dropdownOptions)
+                ->required()
+                ->helperText($jenis)
+                ->afterStateHydrated(function (Select $component, $state, $record) use ($kriteria) {
+                    // On edit mode, convert numeric value back to string for dropdown
+                    if ($record && $state !== null) {
+                        $rawValue = $record->getRawValueForKriteria($kriteria->nama);
+                        if ($rawValue !== null) {
+                            $component->state($rawValue);
+                        }
+                    }
+                })
+                ->dehydrateStateUsing(function ($state) use ($kriteria) {
+                    // Convert dropdown string back to numeric for saving
+                    if ($state !== null) {
+                        $dataMahasiswa = new \App\Models\DataMahasiswa();
+                        return $dataMahasiswa->convertToNumericValue($state, $kriteria->nama);
+                    }
+                    return $state;
+                });
+        } elseif (stripos($label, 'penghasilan') !== false) {
+            // Special handling for money fields
             return TextInput::make($fieldName)
                 ->label($label . ' (Rp/bulan)')
                 ->numeric()
                 ->step(1000)
                 ->minValue(0)
                 ->required()
-                ->placeholder('Contoh: 2500000')
-                ->helperText($jenis . ' - ' . $description . ' | Penghasilan kotor per bulan dalam rupiah');
-        } elseif (stripos($label, 'tempat tinggal') !== false || stripos($label, 'lokasi') !== false || stripos($label, 'kondisi') !== false) {
-            // Location - select field
-            return Select::make($fieldName)
-                ->label($label)
-                ->options([
-                    1 => '1 - Daerah Terpencil/3T (Terdepan, Terluar, Tertinggal)',
-                    2 => '2 - Pedesaan Jauh dari Kota',
-                    3 => '3 - Pedesaan Dekat Kota',
-                    4 => '4 - Pinggiran Kota',
-                    5 => '5 - Pusat Kota',
-                ])
-                ->required()
-                ->helperText($jenis . ' - ' . $description . ' | Nilai 1 = prioritas tertinggi (daerah 3T), nilai 5 = prioritas terendah (pusat kota)');
-        } elseif (stripos($label, 'tes') !== false || stripos($label, 'nilai') !== false || stripos($label, 'wawancara') !== false || stripos($label, 'prestasi') !== false || stripos($label, 'rapor') !== false) {
-            // Test scores - 0-100 range
+                ->helperText($jenis);
+        } elseif (stripos($label, 'prestasi') !== false) {
+            // Special handling for prestasi (achievement score)
             return TextInput::make($fieldName)
                 ->label($label)
                 ->numeric()
@@ -146,39 +196,39 @@ class CalonMahasiswaResource extends Resource
                 ->minValue(0)
                 ->maxValue(100)
                 ->required()
-                ->placeholder('0-100')
                 ->helperText($jenis . ' - ' . $description . ' | Nilai dalam skala 0-100');
-        } elseif (stripos($label, 'usia') !== false || stripos($label, 'umur') !== false) {
-            // Age - integer input
+        } else {
+            // Default numeric input for other criteria
             return TextInput::make($fieldName)
                 ->label($label)
-                ->numeric()
-                ->step(1)
-                ->minValue(16)
-                ->maxValue(35)
-                ->required()
-                ->placeholder('17-25')
-                ->helperText($jenis . ' - ' . $description . ' | Usia dalam tahun');
-        } elseif (stripos($label, 'jarak') !== false) {
-            // Distance - decimal input
-            return TextInput::make($fieldName)
-                ->label($label . ' (km)')
                 ->numeric()
                 ->step(0.1)
                 ->minValue(0)
                 ->required()
-                ->placeholder('Contoh: 15.5')
-                ->helperText($jenis . ' - ' . $description . ' | Jarak dalam kilometer');
-        } else {
-            // Generic numeric field for other criteria
-            return TextInput::make($fieldName)
-                ->label($label)
-                ->numeric()
-                ->step(0.1)
-                ->required()
-                ->placeholder('Masukkan nilai')
-                ->helperText($jenis . ' - ' . $description);
+                ->helperText($jenis);
         }
+    }
+
+    /**
+     * Get helper text for dropdown fields
+     */
+    private static function getDropdownHelperText(string $label): string
+    {
+        $label = strtolower($label);
+
+        if (str_contains($label, 'kondisi') || str_contains($label, 'tempat tinggal')) {
+            return 'Nilai 1 = prioritas tertinggi (daerah 3T), nilai 5 = prioritas terendah (pusat kota)';
+        }
+
+        if (str_contains($label, 'pekerjaan') || str_contains($label, 'kerja')) {
+            return 'Status pekerjaan saat ini';
+        }
+
+        if (str_contains($label, 'dukungan') || str_contains($label, 'support')) {
+            return 'Tingkat dukungan dari keluarga';
+        }
+
+        return 'Pilih sesuai kondisi yang tepat';
     }
 
     public static function table(Table $table): Table
@@ -274,36 +324,48 @@ class CalonMahasiswaResource extends Resource
         if (str_contains($kriteriaName, 'penghasilan') || str_contains($kriteriaName, 'gaji') || str_contains($kriteriaName, 'income')) {
             // Income/salary - format as currency
             return Tables\Columns\TextColumn::make($fieldName)
-                ->label('Penghasilan')
+                ->label($label) // Use dynamic label from kriteria
                 ->sortable()
                 ->formatStateUsing(fn($state): string => $state ? 'Rp ' . number_format($state, 0, ',', '.') : 'N/A')
                 ->color(fn($state): string => $state <= 2000000 ? 'success' : ($state <= 5000000 ? 'warning' : 'danger'))
                 ->tooltip(fn($state): string => 'Penghasilan: Rp ' . number_format($state, 0, ',', '.'));
         } elseif (str_contains($kriteriaName, 'tempat tinggal') || str_contains($kriteriaName, 'lokasi') || str_contains($kriteriaName, 'kondisi')) {
-            // Location - show as badge
+            // Location - show raw value from DataMahasiswa
             return Tables\Columns\BadgeColumn::make($fieldName)
-                ->label('Lokasi')
-                ->formatStateUsing(fn($state): string => match ((string)$state) {
-                    '1' => 'Daerah 3T',
-                    '2' => 'Pedesaan Jauh',
-                    '3' => 'Pedesaan Dekat',
-                    '4' => 'Pinggiran Kota',
-                    '5' => 'Pusat Kota',
-                    default => 'Unknown'
+                ->label($label) // Use dynamic label from kriteria
+                ->formatStateUsing(function ($state, $record) {
+                    // Get raw value from DataMahasiswa if available
+                    if ($record->dataMahasiswa) {
+                        return $record->dataMahasiswa->kondisi_rumah ?? 'N/A';
+                    }
+                    // Fallback to numeric mapping if no DataMahasiswa
+                    return match ((string)$state) {
+                        '1' => 'Sangat Kurang',
+                        '2' => 'Kurang',
+                        '3' => 'Cukup',
+                        '4' => 'Baik',
+                        '5' => 'Sangat Baik',
+                        default => 'N/A'
+                    };
                 })
-                ->color(fn($state): string => match ((string)$state) {
-                    '1' => 'success',
-                    '2' => 'info',
-                    '3' => 'warning',
-                    '4' => 'warning',
-                    '5' => 'danger',
-                    default => 'gray'
+                ->color(function ($state, $record) {
+                    // Color based on raw value priority (Cost criteria)
+                    if ($record->dataMahasiswa) {
+                        return match ($record->dataMahasiswa->kondisi_rumah) {
+                            'Sangat Kurang' => 'success', // High priority
+                            'Kurang' => 'info',
+                            'Cukup' => 'warning',
+                            'Baik' => 'warning',
+                            'Sangat Baik' => 'danger', // Low priority
+                            default => 'gray'
+                        };
+                    }
+                    return 'gray';
                 });
         } elseif (str_contains($kriteriaName, 'prestasi') || str_contains($kriteriaName, 'wawancara') || str_contains($kriteriaName, 'nilai') || str_contains($kriteriaName, 'grade')) {
             // Academic scores, achievements, etc.
-            $shortLabel = str_replace(['Hasil ', 'Rata-rata ', 'Tes ', ' Akademik', ' SMA'], '', $label);
             return Tables\Columns\TextColumn::make($fieldName)
-                ->label($shortLabel)
+                ->label($label) // Use full label from kriteria
                 ->sortable()
                 ->color(fn($state): string => $state >= 80 ? 'success' : ($state >= 60 ? 'warning' : 'danger'))
                 ->formatStateUsing(fn($state): string => $state ? number_format($state, 1) : 'N/A')
@@ -311,21 +373,71 @@ class CalonMahasiswaResource extends Resource
         } elseif (str_contains($kriteriaName, 'usia') || str_contains($kriteriaName, 'umur') || str_contains($kriteriaName, 'age')) {
             // Age
             return Tables\Columns\TextColumn::make($fieldName)
-                ->label('Usia')
+                ->label($label) // Use dynamic label from kriteria
                 ->sortable()
                 ->formatStateUsing(fn($state): string => $state ? $state . ' tahun' : 'N/A')
                 ->tooltip(fn($state): string => 'Usia: ' . $state . ' tahun');
         } elseif (str_contains($kriteriaName, 'jarak') || str_contains($kriteriaName, 'distance')) {
             // Distance
             return Tables\Columns\TextColumn::make($fieldName)
-                ->label('Jarak')
+                ->label($label) // Use dynamic label from kriteria
                 ->sortable()
                 ->formatStateUsing(fn($state): string => $state ? number_format($state, 1) . ' km' : 'N/A')
                 ->tooltip(fn($state): string => 'Jarak: ' . number_format($state, 1) . ' km');
+        } elseif (str_contains($kriteriaName, 'pekerjaan') || str_contains($kriteriaName, 'kerja')) {
+            // Status Pekerjaan - show raw value from DataMahasiswa
+            return Tables\Columns\BadgeColumn::make($fieldName)
+                ->label($label)
+                ->formatStateUsing(function ($state, $record) {
+                    if ($record->dataMahasiswa) {
+                        return $record->dataMahasiswa->status_bekerja ?? 'N/A';
+                    }
+                    // Fallback to numeric mapping
+                    return match ((string)$state) {
+                        '1' => 'Tidak Bekerja',
+                        '2' => 'Bekerja',
+                        default => 'N/A'
+                    };
+                })
+                ->color(function ($state, $record) {
+                    if ($record->dataMahasiswa) {
+                        return $record->dataMahasiswa->status_bekerja === 'Tidak Bekerja' ? 'success' : 'warning';
+                    }
+                    return 'gray';
+                });
+        } elseif (str_contains($kriteriaName, 'dukungan') || str_contains($kriteriaName, 'support')) {
+            // Dukungan Orang Tua - show raw value from DataMahasiswa
+            return Tables\Columns\BadgeColumn::make($fieldName)
+                ->label($label)
+                ->formatStateUsing(function ($state, $record) {
+                    if ($record->dataMahasiswa) {
+                        return $record->dataMahasiswa->support_orang_tua ?? 'N/A';
+                    }
+                    // Fallback to numeric mapping
+                    return match ((string)$state) {
+                        '1' => 'Kurang Mendukung',
+                        '2' => 'Cukup Mendukung',
+                        '3' => 'Mendukung',
+                        '4' => 'Sangat Mendukung',
+                        default => 'N/A'
+                    };
+                })
+                ->color(function ($state, $record) {
+                    if ($record->dataMahasiswa) {
+                        return match ($record->dataMahasiswa->support_orang_tua) {
+                            'Sangat Mendukung' => 'success',
+                            'Mendukung' => 'info',
+                            'Cukup Mendukung' => 'warning',
+                            'Kurang Mendukung' => 'danger',
+                            default => 'gray'
+                        };
+                    }
+                    return 'gray';
+                });
         } else {
             // Generic numeric column for other criteria
             return Tables\Columns\TextColumn::make($fieldName)
-                ->label($kriteria->kode)
+                ->label($label) // Use dynamic label from kriteria
                 ->sortable()
                 ->formatStateUsing(fn($state): string => $state ? number_format($state, 1) : 'N/A')
                 ->tooltip($label);

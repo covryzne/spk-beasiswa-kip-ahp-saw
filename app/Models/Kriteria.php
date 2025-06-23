@@ -126,18 +126,101 @@ class Kriteria extends Model
     {
         $kriteriaName = strtolower($this->nama);
 
-        // Check if this is a location/housing criteria
-        if (str_contains($kriteriaName, 'tempat tinggal') || str_contains($kriteriaName, 'lokasi') || str_contains($kriteriaName, 'kondisi')) {
+        // Penghasilan Orang Tua - manual input (numeric)
+        if (str_contains($kriteriaName, 'penghasilan')) {
+            return []; // No dropdown, use numeric input
+        }
+
+        // Kondisi Tempat Tinggal
+        if (str_contains($kriteriaName, 'tempat tinggal') || str_contains($kriteriaName, 'kondisi')) {
             return [
-                1 => '1 - Ngontrak/Kost',
-                2 => '2 - Rumah Orangtua/Saudara',
-                3 => '3 - Rumah Dinas',
-                4 => '4 - Rumah Kredit',
-                5 => '5 - Rumah Sendiri',
+                'Sangat Kurang' => 'Sangat Kurang',
+                'Kurang' => 'Kurang',
+                'Cukup' => 'Cukup',
+                'Baik' => 'Baik',
+                'Sangat Baik' => 'Sangat Baik',
+            ];
+        }
+
+        // Prestasi - manual input (text/numeric)
+        if (str_contains($kriteriaName, 'prestasi')) {
+            return []; // No dropdown, use text input
+        }
+
+        // Status Pekerjaan
+        if (str_contains($kriteriaName, 'pekerjaan') || str_contains($kriteriaName, 'kerja')) {
+            return [
+                'Bekerja' => 'Bekerja',
+                'Tidak Bekerja' => 'Tidak Bekerja',
+            ];
+        }
+
+        // Dukungan Orang Tua
+        if (str_contains($kriteriaName, 'dukungan') || str_contains($kriteriaName, 'support')) {
+            return [
+                'Kurang Mendukung' => 'Kurang Mendukung',
+                'Cukup Mendukung' => 'Cukup Mendukung',
+                'Mendukung' => 'Mendukung',
+                'Sangat Mendukung' => 'Sangat Mendukung',
             ];
         }
 
         return [];
+    }
+
+    /**
+     * Get dropdown options for this criteria based on DataMahasiswa enum values
+     */
+    public function getDropdownOptions(): array
+    {
+        return \App\Models\DataMahasiswa::getDropdownOptionsForKriteria($this->nama);
+    }
+
+    /**
+     * Check if this criteria should use dropdown input
+     */
+    public function shouldUseDropdown(): bool
+    {
+        $options = $this->getDropdownOptions();
+        return !empty($options);
+    }
+
+    /**
+     * Check if this criteria should use numeric input
+     */
+    public function shouldUseNumericInput(): bool
+    {
+        return !$this->shouldUseDropdown();
+    }
+
+    /**
+     * Check if this criteria should use dropdown or text input
+     */
+    public function hasDropdownOptions(): bool
+    {
+        return !empty($this->getOptions());
+    }
+
+    /**
+     * Get the appropriate form field type for this criteria
+     */
+    public function getFormFieldType(): string
+    {
+        $kriteriaName = strtolower($this->nama);
+
+        if (str_contains($kriteriaName, 'penghasilan')) {
+            return 'number'; // Numeric input
+        }
+
+        if (str_contains($kriteriaName, 'prestasi')) {
+            return 'text'; // Text input 
+        }
+
+        if ($this->hasDropdownOptions()) {
+            return 'select'; // Dropdown
+        }
+
+        return 'number'; // Default to numeric
     }
 
     /**
