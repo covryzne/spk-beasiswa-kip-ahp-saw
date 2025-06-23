@@ -56,18 +56,25 @@ class PerhitunganAhp extends Page implements HasActions
         $previousCalc = \App\Models\PerhitunganAhp::latest()->first();
 
         if ($previousCalc) {
+            // Get current kriteria count
+            $kriteria = Kriteria::orderBy('kode')->get();
+            $currentKriteriaCount = $kriteria->count();
+
             // Load bobot dari eigen_vector
             $eigenVector = $previousCalc->eigen_vector;
-            if (is_array($eigenVector) && count($eigenVector) >= 5) {
-                $kriteria = Kriteria::orderBy('kode')->pluck('kode')->toArray();
+            if (is_array($eigenVector) && count($eigenVector) >= $currentKriteriaCount) {
                 $this->bobotResults = [];
 
                 // Map eigen vector to criteria codes dynamically
-                foreach ($kriteria as $index => $kode) {
+                foreach ($kriteria as $index => $k) {
                     if (isset($eigenVector[$index])) {
-                        $this->bobotResults[$kode] = $eigenVector[$index];
+                        $this->bobotResults[$k->kode] = $eigenVector[$index];
                     }
                 }
+            } elseif (is_array($eigenVector) && count($eigenVector) !== $currentKriteriaCount) {
+                // Jika jumlah kriteria berubah, reset calculation
+                $this->resetCalculationResults();
+                return;
             }
 
             $this->consistencyRatio = (float) $previousCalc->cr;
@@ -94,22 +101,33 @@ class PerhitunganAhp extends Page implements HasActions
             }
         } else {
             // No previous calculation found - ensure all variables are reset
-            $this->bobotResults = [];
-            $this->consistencyRatio = null;
-            $this->matrixNormalisasi = null;
-            $this->weightedSum = null;
-            $this->lambdaMax = null;
-            $this->consistencyIndex = null;
-            $this->randomIndex = null;
+            $this->resetCalculationResults();
         }
+    }
+
+    /**
+     * Reset all calculation results
+     */
+    private function resetCalculationResults(): void
+    {
+        $this->bobotResults = [];
+        $this->consistencyRatio = null;
+        $this->matrixNormalisasi = null;
+        $this->weightedSum = null;
+        $this->lambdaMax = null;
+        $this->consistencyIndex = null;
+        $this->randomIndex = null;
     }
     private function recalculateWeightedSum(): void
     {
         // Rebuild weighted sum dari data yang ada
         $kriteria = Kriteria::orderBy('kode')->get();
 
-        if ($kriteria->count() >= 5 && !empty($this->bobotResults)) {
+        if ($kriteria->count() >= 2 && !empty($this->bobotResults)) {
             $matrix = [];
+
+            // Ensure all pairwise comparisons exist in database
+            $this->ensureCompleteMatrixAhp($kriteria);
 
             // Build matrix dari database MatriksAhp
             $matriksAhp = MatriksAhp::all()->keyBy(function ($item) {
@@ -199,31 +217,21 @@ class PerhitunganAhp extends Page implements HasActions
     public function useRecommendedValues(): void
     {
         $kriteria = Kriteria::orderBy('kode')->get();
-        $recommendations = [
-            'C1_C2' => 3,
-            'C1_C3' => 5,
-            'C1_C4' => 3,
-            'C1_C5' => 3,
-            'C2_C3' => 2,
-            'C2_C4' => 1,
-            'C2_C5' => 2,
-            'C3_C4' => 1,
-            'C3_C5' => 1,
-            'C4_C5' => 1,
-        ];
 
+        // Generate dynamic recommendations based on criteria priorities
         foreach ($kriteria as $i => $kriteriaI) {
             foreach ($kriteria as $j => $kriteriaJ) {
                 if ($i < $j) {
                     $key = "matriks_{$kriteriaI->id}_{$kriteriaJ->id}";
-                    $recKey = $kriteriaI->kode . '_' . $kriteriaJ->kode;
-                    $nilai = $recommendations[$recKey] ?? 1;
+
+                    // Use the same logic as generateDefaultComparisonValue
+                    $nilai = $this->generateDefaultComparisonValue($kriteriaI, $kriteriaJ);
 
                     $this->data[$key] = $nilai;
 
                     // Update reciprocal
                     $reciprocalKey = "matriks_{$kriteriaJ->id}_{$kriteriaI->id}";
-                    $this->data[$reciprocalKey] = 1 / $nilai;
+                    $this->data[$reciprocalKey] = round(1 / $nilai, 6);
 
                     // Auto-save langsung
                     $this->autoSaveMatrix($kriteriaI, $kriteriaJ, $nilai);
@@ -233,7 +241,7 @@ class PerhitunganAhp extends Page implements HasActions
 
         Notification::make()
             ->title('Nilai Rekomendasi Diterapkan')
-            ->body('Matrix telah diisi dengan nilai rekomendasi dan otomatis disimpan.')
+            ->body('Matrix telah diisi dengan nilai rekomendasi berdasarkan karakteristik kriteria dan otomatis disimpan.')
             ->success()
             ->send();
     }
@@ -360,12 +368,27 @@ class PerhitunganAhp extends Page implements HasActions
         $n = count($matrix);
         $this->weightedSum = [];
 
+        // Validate matrix and weights compatibility
+        if (empty($weights) || $n === 0) {
+            return;
+        }
+
         // Convert associative array to indexed array
         $weightValues = array_values($weights);
+
+        // Ensure we have enough weights for the matrix size
+        if (count($weightValues) !== $n) {
+            // If weights don't match matrix size, skip calculation
+            return;
+        }
 
         for ($i = 0; $i < $n; $i++) {
             $sum = 0;
             for ($j = 0; $j < $n; $j++) {
+                // Additional safety check
+                if (!isset($matrix[$i][$j]) || !isset($weightValues[$j])) {
+                    continue;
+                }
                 $sum += $matrix[$i][$j] * $weightValues[$j];
             }
             $this->weightedSum[$i] = $sum;
@@ -463,22 +486,37 @@ class PerhitunganAhp extends Page implements HasActions
 
     public function getRecommendedValue($kriteria1, $kriteria2): string
     {
-        // Berikan rekomendasi berdasarkan jenis kriteria dan konteks KIP Kuliah
-        $recommendations = [
-            'C1_C2' => '3 (Penghasilan sedikit lebih penting dari lokasi)',
-            'C1_C3' => '5 (Penghasilan cukup lebih penting dari prestasi)',
-            'C1_C4' => '3 (Penghasilan sedikit lebih penting dari wawancara)',
-            'C1_C5' => '3 (Penghasilan sedikit lebih penting dari nilai)',
-            'C2_C3' => '2 (Lokasi sedikit lebih penting dari prestasi)',
-            'C2_C4' => '1 (Lokasi sama penting dengan wawancara)',
-            'C2_C5' => '2 (Lokasi sedikit lebih penting dari nilai)',
-            'C3_C4' => '1 (Prestasi sama penting dengan wawancara)',
-            'C3_C5' => '1 (Prestasi sama penting dengan nilai)',
-            'C4_C5' => '1 (Wawancara sama penting dengan nilai)',
-        ];
+        // Generate dynamic recommendation based on criteria characteristics
+        $value = $this->generateDefaultComparisonValue($kriteria1, $kriteria2);
 
-        $key = $kriteria1->kode . '_' . $kriteria2->kode;
-        return $recommendations[$key] ?? '1 (sama penting)';
+        $priority1 = $this->getCriteriaPriority($kriteria1);
+        $priority2 = $this->getCriteriaPriority($kriteria2);
+
+        if ($value == 1) {
+            return '1 (Sama penting)';
+        } elseif ($value > 1) {
+            $description = $this->getComparisonDescription($priority1, $priority2, $value);
+            return $value . ' (' . $kriteria1->nama . ' ' . $description . ' ' . $kriteria2->nama . ')';
+        } else {
+            $inverseValue = round(1 / $value, 2);
+            $description = $this->getComparisonDescription($priority2, $priority1, $inverseValue);
+            return $value . ' (' . $kriteria2->nama . ' ' . $description . ' ' . $kriteria1->nama . ')';
+        }
+    }
+
+    private function getComparisonDescription($priority1, $priority2, $value): string
+    {
+        if ($value >= 7) {
+            return 'sangat lebih penting dari';
+        } elseif ($value >= 5) {
+            return 'cukup lebih penting dari';
+        } elseif ($value >= 3) {
+            return 'sedikit lebih penting dari';
+        } elseif ($value >= 2) {
+            return 'agak lebih penting dari';
+        } else {
+            return 'sama penting dengan';
+        }
     }
 
     public function resetMatrix(): void
@@ -591,5 +629,96 @@ class PerhitunganAhp extends Page implements HasActions
             // Silent fail, biar ga ganggu UX
             logger()->error('Auto-save matrix gagal: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Ensure all pairwise comparisons exist in MatriksAhp table
+     */
+    private function ensureCompleteMatrixAhp($kriteria): void
+    {
+        foreach ($kriteria as $kriteriaI) {
+            foreach ($kriteria as $kriteriaJ) {
+                $existing = MatriksAhp::where('kriteria_1_id', $kriteriaI->id)
+                    ->where('kriteria_2_id', $kriteriaJ->id)
+                    ->first();
+
+                if (!$existing) {
+                    $nilai = $this->generateDefaultComparisonValue($kriteriaI, $kriteriaJ);
+
+                    MatriksAhp::create([
+                        'kriteria_1_id' => $kriteriaI->id,
+                        'kriteria_2_id' => $kriteriaJ->id,
+                        'nilai' => $nilai
+                    ]);
+                }
+            }
+        }
+    }
+
+    /**
+     * Generate default comparison value between two criteria
+     */
+    private function generateDefaultComparisonValue($kriteria1, $kriteria2): float
+    {
+        // Same criteria
+        if ($kriteria1->id === $kriteria2->id) {
+            return 1.0;
+        }
+
+        // Get priority weights based on criteria names
+        $priority1 = $this->getCriteriaPriority($kriteria1);
+        $priority2 = $this->getCriteriaPriority($kriteria2);
+
+        $priorityDiff = $priority1 - $priority2;
+
+        if ($priorityDiff > 0) {
+            $scale = min(abs($priorityDiff) + 1, 9);
+            return (float) $scale;
+        } elseif ($priorityDiff < 0) {
+            $scale = min(abs($priorityDiff) + 1, 9);
+            return round(1.0 / $scale, 2);
+        } else {
+            return 1.0;
+        }
+    }
+
+    /**
+     * Get priority weight for criteria based on its characteristics
+     */
+    private function getCriteriaPriority($kriteria): int
+    {
+        $kriteriaName = strtolower($kriteria->nama);
+
+        // Higher number = higher priority in scholarship selection
+        if (str_contains($kriteriaName, 'penghasilan') || str_contains($kriteriaName, 'gaji') || str_contains($kriteriaName, 'income')) {
+            return 5; // Very high priority
+        }
+
+        if (str_contains($kriteriaName, 'tempat tinggal') || str_contains($kriteriaName, 'kondisi') || str_contains($kriteriaName, 'ekonomi')) {
+            return 4; // High priority
+        }
+
+        if (str_contains($kriteriaName, 'nilai') || str_contains($kriteriaName, 'grade') || str_contains($kriteriaName, 'rata')) {
+            return 4; // High priority
+        }
+
+        if (str_contains($kriteriaName, 'prestasi') || str_contains($kriteriaName, 'achievement')) {
+            return 3; // Medium-high priority
+        }
+
+        if (str_contains($kriteriaName, 'wawancara') || str_contains($kriteriaName, 'interview')) {
+            return 2; // Medium priority
+        }
+
+        if (str_contains($kriteriaName, 'usia') || str_contains($kriteriaName, 'umur') || str_contains($kriteriaName, 'age')) {
+            return 1; // Lower priority
+        }
+
+        if (str_contains($kriteriaName, 'jarak') || str_contains($kriteriaName, 'distance')) {
+            return 1; // Lower priority
+        }
+
+        // Default priority based on criteria type
+        return $kriteria->jenis === 'Cost' ? 3 : 2;
     }
 }
