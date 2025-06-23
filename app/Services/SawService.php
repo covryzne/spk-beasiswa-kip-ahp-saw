@@ -250,11 +250,10 @@ class SawService
     public function getResultsForChart()
     {
         $results = $this->getLatestResults();
-
         return $results->map(function ($result) {
             return [
                 'nama' => $result->calonMahasiswa->nama,
-                'skor' => round($result->skor, 4),
+                'skor' => round((float) $result->skor, 4),
                 'rank' => $result->rank,
             ];
         })->toArray();
