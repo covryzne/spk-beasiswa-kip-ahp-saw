@@ -19,6 +19,7 @@ class PerhitunganAhp extends Model
         'is_consistent',
         'eigen_vector',
         'matriks_normalized',
+        'weighted_sum', // Add weighted sum for debugging
         'tanggal_perhitungan',
     ];
 
@@ -30,20 +31,22 @@ class PerhitunganAhp extends Model
         'is_consistent' => 'boolean',
         'eigen_vector' => 'array',
         'matriks_normalized' => 'array',
+        'weighted_sum' => 'array', // Add weighted sum cast
         'tanggal_perhitungan' => 'date',
     ];
 
     /**
      * Get Random Index (RI) values for different matrix sizes
+     * Values match Excel calculation standard
      */
     public static function getRandomIndex(): array
     {
         return [
-            1 => 0,
-            2 => 0,
+            1 => 0.00,
+            2 => 0.00,
             3 => 0.52,
             4 => 0.89,
-            5 => 1.12,
+            5 => 1.11, // Fixed to match Excel (was 1.12)
             6 => 1.25,
             7 => 1.35,
             8 => 1.40,

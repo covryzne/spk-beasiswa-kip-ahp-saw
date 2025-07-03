@@ -126,11 +126,12 @@ class AhpService
     }
 
     /**
-     * Calculate consistency ratio (CR)
+     * Calculate consistency ratio (CR) - Following Excel calculation method
      */
     private function calculateConsistency(array $matrix, array $weights, int $n): array
     {
-        // Calculate weighted sum vector
+        // Step 3: Calculate weighted sum vector (Matrix × Priority Vector)
+        // This is the "Penjumlahan setiap baris" step from Excel
         $weightedSum = [];
         for ($i = 0; $i < $n; $i++) {
             $sum = 0;
@@ -140,7 +141,7 @@ class AhpService
             $weightedSum[$i] = $sum;
         }
 
-        // Calculate lambda max
+        // Step 4: Calculate lambda max (Average of weighted_sum[i] / weights[i])
         $lambdaMax = 0;
         for ($i = 0; $i < $n; $i++) {
             if ($weights[$i] != 0) {
@@ -149,13 +150,13 @@ class AhpService
         }
         $lambdaMax = $lambdaMax / $n;
 
-        // Calculate CI (Consistency Index)
+        // Step 5: Calculate CI (Consistency Index) = (lambda_max - n) / (n - 1)
         $ci = ($lambdaMax - $n) / ($n - 1);
 
-        // Get RI (Random Index)
-        $ri = PerhitunganAhp::getRiForSize($n);
+        // Step 6: Get RI (Random Index) based on matrix size
+        $ri = $this->getRandomIndex($n);
 
-        // Calculate CR (Consistency Ratio)
+        // Step 7: Calculate CR (Consistency Ratio) = CI / RI
         $cr = $ri != 0 ? $ci / $ri : 0;
 
         return [
@@ -163,8 +164,36 @@ class AhpService
             'ci' => $ci,
             'ri' => $ri,
             'cr' => $cr,
+            'weighted_sum' => $weightedSum, // Add this for debugging
             'is_consistent' => $cr < 0.1,
         ];
+    }
+
+    /**
+     * Get Random Index (RI) based on matrix size
+     * Standard RI values for AHP
+     */
+    private function getRandomIndex(int $n): float
+    {
+        $riValues = [
+            1 => 0.00,
+            2 => 0.00,
+            3 => 0.58,
+            4 => 0.90,
+            5 => 1.12,
+            6 => 1.24,
+            7 => 1.32,
+            8 => 1.41,
+            9 => 1.45,
+            10 => 1.49,
+            11 => 1.51,
+            12 => 1.48,
+            13 => 1.56,
+            14 => 1.57,
+            15 => 1.59,
+        ];
+
+        return $riValues[$n] ?? 1.59;
     }
 
     /**
@@ -182,6 +211,9 @@ class AhpService
      */
     private function savePerhitunganAhp(array $consistency, array $weights, array $normalizedMatrix): void
     {
+        // Clear previous calculations first
+        PerhitunganAhp::truncate();
+
         PerhitunganAhp::create([
             'lambda_max' => $consistency['lambda_max'],
             'ci' => $consistency['ci'],
@@ -190,6 +222,7 @@ class AhpService
             'is_consistent' => $consistency['is_consistent'],
             'eigen_vector' => $weights,
             'matriks_normalized' => $normalizedMatrix,
+            'weighted_sum' => $consistency['weighted_sum'] ?? [], // Include weighted sum for verification
             'tanggal_perhitungan' => now()->toDateString(),
         ]);
     }
@@ -209,5 +242,76 @@ class AhpService
     {
         $latest = $this->getLatestCalculation();
         return $latest && $latest->is_consistent;
+    }
+
+    /**
+     * Debug method to verify AHP calculation step by step
+     * Compare with Excel calculation
+     */
+    public function debugAhpCalculation(): array
+    {
+        $kriteria = Kriteria::orderBy('kode')->get();
+        $n = $kriteria->count();
+
+        if ($n === 0) {
+            throw new \Exception('Tidak ada kriteria yang tersedia');
+        }
+
+        // Step 1: Get comparison matrix
+        $matrix = $this->getComparisonMatrix($kriteria);
+
+        // Step 2: Calculate column sums (for normalization)
+        $columnSums = [];
+        for ($j = 0; $j < $n; $j++) {
+            $sum = 0;
+            for ($i = 0; $i < $n; $i++) {
+                $sum += $matrix[$i][$j];
+            }
+            $columnSums[$j] = $sum;
+        }
+
+        // Step 3: Normalize matrix
+        $normalizedMatrix = $this->normalizeMatrix($matrix);
+
+        // Step 4: Calculate weights (priority vector)
+        $weights = $this->calculateWeights($normalizedMatrix);
+
+        // Step 5: Calculate weighted sum vector
+        $weightedSum = [];
+        for ($i = 0; $i < $n; $i++) {
+            $sum = 0;
+            for ($j = 0; $j < $n; $j++) {
+                $sum += $matrix[$i][$j] * $weights[$j];
+            }
+            $weightedSum[$i] = $sum;
+        }
+
+        // Step 6: Calculate lambda max
+        $lambdaMax = 0;
+        for ($i = 0; $i < $n; $i++) {
+            if ($weights[$i] != 0) {
+                $lambdaMax += $weightedSum[$i] / $weights[$i];
+            }
+        }
+        $lambdaMax = $lambdaMax / $n;
+
+        // Step 7: Calculate CI and CR
+        $ci = ($lambdaMax - $n) / ($n - 1);
+        $ri = $this->getRandomIndex($n);
+        $cr = $ri != 0 ? $ci / $ri : 0;
+
+        return [
+            'step_1_matrix' => $matrix,
+            'step_2_column_sums' => $columnSums,
+            'step_3_normalized_matrix' => $normalizedMatrix,
+            'step_4_weights' => $weights,
+            'step_5_weighted_sum' => $weightedSum,
+            'step_6_lambda_max' => $lambdaMax,
+            'step_7_ci' => $ci,
+            'step_7_ri' => $ri,
+            'step_7_cr' => $cr,
+            'is_consistent' => $cr < 0.1,
+            'criteria_labels' => $kriteria->pluck('nama', 'kode')->toArray(),
+        ];
     }
 }
