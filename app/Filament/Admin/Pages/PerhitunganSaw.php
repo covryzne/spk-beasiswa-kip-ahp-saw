@@ -50,7 +50,7 @@ class PerhitunganSaw extends Page implements HasActions
     public function mount(): void
     {
         $this->kriteria = Kriteria::orderBy('kode')->get()->toArray();
-        $this->calonMahasiswa = CalonMahasiswa::orderBy('kode')->get()->toArray();
+        $this->calonMahasiswa = CalonMahasiswa::with('dataMahasiswa')->orderBy('kode')->get()->toArray();
 
         // Check if AHP calculation is ready
         $ahpService = new AhpService();
@@ -141,7 +141,7 @@ class PerhitunganSaw extends Page implements HasActions
         if (!$this->isAhpReady) return;
 
         // Load existing calculation results
-        $calonMahasiswa = CalonMahasiswa::orderBy('kode')->get();
+        $calonMahasiswa = CalonMahasiswa::with('dataMahasiswa')->orderBy('kode')->get();
         $kriteria = Kriteria::orderBy('kode')->get();
 
         // Validate data exists
@@ -240,5 +240,33 @@ class PerhitunganSaw extends Page implements HasActions
     public function getTitle(): string
     {
         return 'Proses Seleksi dengan Metode SAW';
+    }
+
+    /**
+     * Get program studi for a specific mahasiswa kode
+     */
+    public function getProgramStudi(string $kode): string
+    {
+        $mahasiswa = collect($this->calonMahasiswa)->firstWhere('kode', $kode);
+
+        if ($mahasiswa && isset($mahasiswa['data_mahasiswa']) && $mahasiswa['data_mahasiswa']) {
+            return $mahasiswa['data_mahasiswa']['program_studi'] ?? 'Tidak diketahui';
+        }
+
+        return 'Tidak diketahui';
+    }
+
+    /**
+     * Get nama lengkap for a specific mahasiswa kode
+     */
+    public function getNamaLengkap(string $kode): string
+    {
+        $mahasiswa = collect($this->calonMahasiswa)->firstWhere('kode', $kode);
+
+        if ($mahasiswa && isset($mahasiswa['data_mahasiswa']) && $mahasiswa['data_mahasiswa']) {
+            return $mahasiswa['data_mahasiswa']['nama'] ?? $mahasiswa['nama'] ?? $kode;
+        }
+
+        return $mahasiswa['nama'] ?? $kode;
     }
 }

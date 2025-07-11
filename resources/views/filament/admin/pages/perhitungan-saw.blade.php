@@ -148,6 +148,17 @@
                 </div>
                 @if($showDecisionMatrix)
                 <div class="p-6">
+                    <!-- Explanation for decision matrix -->
+                    <div
+                        class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
+                        <h4 class="text-sm font-semibold text-green-800 dark:text-green-200 mb-2">Matrix Keputusan (X):
+                        </h4>
+                        <div class="text-sm text-green-700 dark:text-green-300">
+                            Matrix berisi nilai asli setiap alternatif untuk masing-masing kriteria. Nilai ini akan
+                            dinormalisasi berdasarkan jenis kriteria (benefit/cost).
+                        </div>
+                    </div>
+
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm">
                             <thead>
@@ -181,6 +192,68 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- Matrix Analysis -->
+                    @if(!empty($decisionMatrix) && !empty($kriteria))
+                    <div class="mt-6">
+                        <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">📊 Analisis Matrix per
+                            Kriteria:</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            @foreach($kriteria as $k)
+                            @php
+                            $kriteriaKode = $k['kode'];
+                            $kriteriaJenis = $k['jenis'];
+                            $kriterianama = $k['nama'];
+
+                            // Ambil semua nilai untuk kriteria ini
+                            $allValues = collect($decisionMatrix)->pluck($kriteriaKode)->filter()->toArray();
+                            $maxValue = max($allValues);
+                            $minValue = min($allValues);
+                            $avgValue = array_sum($allValues) / count($allValues);
+                            @endphp
+
+                            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                                <h5 class="font-medium text-gray-900 dark:text-gray-100 mb-2">
+                                    {{ $kriteriaKode }} - {{ Str::limit($kriterianama, 25) }}
+                                </h5>
+                                <div class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                                    <div class="flex justify-between">
+                                        <span>Jenis:</span>
+                                        <span
+                                            class="font-medium {{ $kriteriaJenis === 'benefit' ? 'text-green-600' : 'text-red-600' }}">
+                                            {{ ucfirst($kriteriaJenis) }}
+                                        </span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Min:</span>
+                                        <span
+                                            class="font-medium">{{ $kriteriaKode === 'C1' ? number_format($minValue) : $minValue }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Max:</span>
+                                        <span
+                                            class="font-medium">{{ $kriteriaKode === 'C1' ? number_format($maxValue) : $maxValue }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Rata-rata:</span>
+                                        <span
+                                            class="font-medium">{{ $kriteriaKode === 'C1' ? number_format($avgValue, 0) : round($avgValue, 2) }}</span>
+                                    </div>
+                                    @if($kriteriaJenis === 'benefit')
+                                    <div class="text-xs text-green-600 dark:text-green-400 mt-2">
+                                        ↑ Nilai tertinggi terbaik
+                                    </div>
+                                    @else
+                                    <div class="text-xs text-red-600 dark:text-red-400 mt-2">
+                                        ↓ Nilai terendah terbaik
+                                    </div>
+                                    @endif
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
                 </div>
                 @endif
             </div>
@@ -211,6 +284,55 @@
                         </div>
                     </div>
 
+                    <!-- Manual Calculation Example -->
+                    @if(!empty($decisionMatrix) && !empty($kriteria))
+                    <div
+                        class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+                        <h4 class="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-3">📘 Contoh Perhitungan
+                            Manual:</h4>
+
+                        @php
+                        // Ambil data pertama untuk contoh
+                        $firstKriteria = collect($kriteria)->first();
+                        $kriteriaKode = $firstKriteria['kode'];
+                        $kriteriaJenis = $firstKriteria['jenis'];
+                        $kriterianama = $firstKriteria['nama'];
+
+                        // Ambil semua nilai untuk kriteria ini
+                        $allValues = collect($decisionMatrix)->pluck($kriteriaKode)->filter()->toArray();
+
+                        if ($kriteriaJenis === 'benefit') {
+                        $maxValue = max($allValues);
+                        $firstAlternative = collect($decisionMatrix)->keys()->first();
+                        $firstValue = $decisionMatrix[$firstAlternative][$kriteriaKode] ?? 0;
+                        $normalizedValue = $maxValue > 0 ? $firstValue / $maxValue : 0;
+                        } else {
+                        $minValue = min($allValues);
+                        $firstAlternative = collect($decisionMatrix)->keys()->first();
+                        $firstValue = $decisionMatrix[$firstAlternative][$kriteriaKode] ?? 0;
+                        $normalizedValue = $firstValue > 0 && $minValue > 0 ? $minValue / $firstValue : 0;
+                        }
+                        @endphp
+
+                        <div class="text-xs text-blue-700 dark:text-blue-300 space-y-2">
+                            <p><strong>Untuk Kriteria {{ $kriteriaKode }} ({{ $kriterianama }}) -
+                                    {{ ucfirst($kriteriaJenis) }}:</strong></p>
+                            <p>• Nilai-nilai: {{ implode(', ', $allValues) }}</p>
+                            @if($kriteriaJenis === 'benefit')
+                            <p>• Max value = {{ $maxValue }}</p>
+                            <p>• Normalisasi {{ $firstAlternative }}: R = {{ $firstValue }} ÷ {{ $maxValue }} =
+                                <strong>{{ round($normalizedValue, 4) }}</strong>
+                            </p>
+                            @else
+                            <p>• Min value = {{ $minValue }}</p>
+                            <p>• Normalisasi {{ $firstAlternative }}: R = {{ $minValue }} ÷ {{ $firstValue }} =
+                                <strong>{{ round($normalizedValue, 4) }}</strong>
+                            </p>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
+
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm">
                             <thead>
@@ -221,7 +343,8 @@
                                     @foreach($kriteria as $index => $k)
                                     <th
                                         class="text-center py-3 px-3 font-semibold text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-700">
-                                        R{{ $index + 1 }}</th>
+                                        R{{ $index + 1 }} ({{ $k['kode'] }})
+                                    </th>
                                     @endforeach
                                 </tr>
                             </thead>
@@ -239,6 +362,68 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- Detailed Calculation Examples -->
+                    @if(!empty($decisionMatrix) && !empty($kriteria))
+                    <div class="mt-6 space-y-4">
+                        <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">📊 Contoh Perhitungan
+                            Detil untuk Setiap Kriteria:</h4>
+
+                        @foreach($kriteria as $k)
+                        @php
+                        $kriteriaKode = $k['kode'];
+                        $kriteriaJenis = $k['jenis'];
+                        $kriterianama = $k['nama'];
+
+                        // Ambil semua nilai untuk kriteria ini
+                        $allValues = collect($decisionMatrix)->pluck($kriteriaKode)->filter()->toArray();
+                        $maxValue = max($allValues);
+                        $minValue = min($allValues);
+                        @endphp
+
+                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                            <h5 class="font-medium text-gray-900 dark:text-gray-100 mb-2">
+                                {{ $kriteriaKode }} - {{ $kriterianama }} ({{ ucfirst($kriteriaJenis) }})
+                            </h5>
+
+                            <div class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                                <p>• Nilai asli: {{ implode(', ', $allValues) }}</p>
+                                @if($kriteriaJenis === 'benefit')
+                                <p>• Max value = {{ $maxValue }}</p>
+                                <p>• Formula: Rij = Xij ÷ {{ $maxValue }}</p>
+                                @else
+                                <p>• Min value = {{ $minValue }}</p>
+                                <p>• Formula: Rij = {{ $minValue }} ÷ Xij</p>
+                                @endif
+
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+                                    @foreach($decisionMatrix as $altKode => $altValues)
+                                    @php
+                                    $originalValue = $altValues[$kriteriaKode] ?? 0;
+                                    if ($kriteriaJenis === 'benefit') {
+                                    $normalizedValue = $maxValue > 0 ? $originalValue / $maxValue : 0;
+                                    } else {
+                                    $normalizedValue = $originalValue > 0 && $minValue > 0 ? $minValue / $originalValue
+                                    : 0;
+                                    }
+                                    @endphp
+                                    <div class="text-xs bg-white dark:bg-gray-600 p-2 rounded">
+                                        <div class="font-medium">{{ $altKode }}:</div>
+                                        @if($kriteriaJenis === 'benefit')
+                                        <div>{{ $originalValue }} ÷ {{ $maxValue }} = {{ round($normalizedValue, 4) }}
+                                        </div>
+                                        @else
+                                        <div>{{ $minValue }} ÷ {{ $originalValue }} = {{ round($normalizedValue, 4) }}
+                                        </div>
+                                        @endif
+                                    </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                    @endif
                 </div>
                 @endif
             </div>
@@ -268,6 +453,48 @@
                         </div>
                     </div>
 
+                    <!-- Manual Calculation Example for First Alternative -->
+                    @if(!empty($finalScores) && !empty($bobotAhp) && !empty($normalizedMatrix))
+                    @php
+                    $firstAlternative = collect($finalScores)->keys()->first();
+                    $firstScore = $finalScores[$firstAlternative];
+                    $firstNormalized = $normalizedMatrix[$firstAlternative] ?? [];
+                    @endphp
+                    <div
+                        class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-4 mb-6">
+                        <h4 class="text-sm font-semibold text-green-800 dark:text-green-200 mb-3">📘 Contoh Perhitungan
+                            Manual untuk {{ $firstAlternative }}:</h4>
+
+                        <div class="text-xs text-green-700 dark:text-green-300 space-y-2">
+                            <p><strong>Langkah perhitungan:</strong></p>
+                            @foreach($bobotAhp as $kriteriaKode => $bobot)
+                            @if(isset($firstNormalized[$kriteriaKode]))
+                            @php
+                            $rValue = $firstNormalized[$kriteriaKode];
+                            $contribution = $bobot * $rValue;
+                            @endphp
+                            <p>• {{ $kriteriaKode }}: {{ round($bobot, 4) }} × {{ round($rValue, 4) }} =
+                                {{ round($contribution, 4) }}
+                            </p>
+                            @endif
+                            @endforeach
+
+                            <div class="border-t border-green-300 pt-2 mt-3">
+                                <p><strong>Total Skor {{ $firstAlternative }}:</strong></p>
+                                <p class="text-sm">
+                                    @foreach($bobotAhp as $kriteriaKode => $bobot)
+                                    @if(isset($firstNormalized[$kriteriaKode]))
+                                    {{ round($bobot, 4) }} ×
+                                    {{ round($firstNormalized[$kriteriaKode], 4) }}{{ !$loop->last ? ' + ' : '' }}
+                                    @endif
+                                    @endforeach
+                                    = <strong>{{ round($firstScore, 4) }}</strong>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
                     <div class="space-y-4">
                         @foreach($finalScores as $kode => $score)
                         @php
@@ -287,8 +514,84 @@
                                 @endif
                                 @endforeach
                             </div>
+
+                            <!-- Detailed step breakdown -->
+                            <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+                                    @foreach($bobotAhp as $kriteriaKode => $bobot)
+                                    @if(isset($normalizedValues[$kriteriaKode]))
+                                    @php
+                                    $contribution = $bobot * $normalizedValues[$kriteriaKode];
+                                    @endphp
+                                    <div class="bg-white dark:bg-gray-600 p-1 rounded text-center">
+                                        <div class="font-medium">{{ $kriteriaKode }}</div>
+                                        <div>{{ round($contribution, 4) }}</div>
+                                    </div>
+                                    @endif
+                                    @endforeach
+                                </div>
+                            </div>
                         </div>
                         @endforeach
+                    </div>
+
+                    <!-- Summary Calculation Table -->
+                    <div class="mt-6">
+                        <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">📊 Tabel Ringkasan
+                            Perhitungan Skor:</h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm border border-gray-200 dark:border-gray-600">
+                                <thead>
+                                    <tr class="bg-gray-50 dark:bg-gray-700">
+                                        <th
+                                            class="border border-gray-200 dark:border-gray-600 py-2 px-3 font-semibold text-gray-900 dark:text-gray-100">
+                                            Alternatif</th>
+                                        @foreach($bobotAhp as $kriteriaKode => $bobot)
+                                        <th
+                                            class="border border-gray-200 dark:border-gray-600 py-2 px-3 font-semibold text-gray-900 dark:text-gray-100 text-center">
+                                            W{{ $loop->iteration }}×R{{ $loop->iteration }}<br>
+                                            <span class="text-xs text-gray-500">({{ $kriteriaKode }})</span>
+                                        </th>
+                                        @endforeach
+                                        <th
+                                            class="border border-gray-200 dark:border-gray-600 py-2 px-3 font-semibold text-gray-900 dark:text-gray-100 bg-purple-50 dark:bg-purple-900/30">
+                                            Skor Akhir</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($finalScores as $kode => $score)
+                                    @php
+                                    $normalizedValues = $normalizedMatrix[$kode] ?? [];
+                                    @endphp
+                                    <tr>
+                                        <td
+                                            class="border border-gray-200 dark:border-gray-600 py-2 px-3 font-medium text-gray-900 dark:text-gray-100">
+                                            {{ $kode }}
+                                        </td>
+                                        @foreach($bobotAhp as $kriteriaKode => $bobot)
+                                        @if(isset($normalizedValues[$kriteriaKode]))
+                                        @php
+                                        $contribution = $bobot * $normalizedValues[$kriteriaKode];
+                                        @endphp
+                                        <td
+                                            class="border border-gray-200 dark:border-gray-600 py-2 px-3 text-center text-gray-700 dark:text-gray-300">
+                                            {{ round($contribution, 4) }}
+                                        </td>
+                                        @else
+                                        <td
+                                            class="border border-gray-200 dark:border-gray-600 py-2 px-3 text-center text-gray-700 dark:text-gray-300">
+                                            0</td>
+                                        @endif
+                                        @endforeach
+                                        <td
+                                            class="border border-gray-200 dark:border-gray-600 py-2 px-3 text-center font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30">
+                                            {{ round($score, 4) }}
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
                 @endif
@@ -304,17 +607,36 @@
                     </h3>
                 </div>
                 <div class="p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-3">
                         @foreach(collect($finalScores)->take(10) as $kode => $score)
-                        <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                            <div class="flex items-center">
-                                <span
-                                    class="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs font-bold mr-3">
-                                    {{ $loop->iteration }}
-                                </span>
-                                <span class="font-medium text-gray-900 dark:text-gray-100">{{ $kode }}</span>
+                        <div
+                            class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <span
+                                        class="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                                        {{ $loop->iteration }}
+                                    </span>
+                                    <div>
+                                        <div class="font-medium text-gray-900 dark:text-gray-100">
+                                            {{ $this->getNamaLengkap($kode) }}
+                                        </div>
+                                        <div class="text-sm text-gray-600 dark:text-gray-400">
+                                            <span class="font-medium">{{ $kode }}</span> •
+                                            <span
+                                                class="text-blue-600 dark:text-blue-400">{{ $this->getProgramStudi($kode) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-lg font-bold text-green-600 dark:text-green-400">
+                                        {{ round($score, 4) }}
+                                    </div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                                        Skor SAW
+                                    </div>
+                                </div>
                             </div>
-                            <span class="text-green-600 dark:text-green-400 font-bold">{{ round($score, 4) }}</span>
                         </div>
                         @endforeach
                     </div>

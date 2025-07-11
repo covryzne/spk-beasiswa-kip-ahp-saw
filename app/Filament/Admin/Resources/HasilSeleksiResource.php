@@ -56,6 +56,9 @@ class HasilSeleksiResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn(Builder $query) => $query->with([
+                'calonMahasiswa.dataMahasiswa'
+            ]))
             ->defaultSort('ranking', 'asc')
             ->columns([
                 // Ranking Badge
@@ -94,6 +97,16 @@ class HasilSeleksiResource extends Resource
                     ->searchable()
                     ->weight(FontWeight::Medium)
                     ->wrap(),
+
+                // Program Studi
+                TextColumn::make('calonMahasiswa.dataMahasiswa.program_studi')
+                    ->label('Program Studi')
+                    ->searchable()
+                    ->badge()
+                    ->color('primary')
+                    ->weight(FontWeight::Medium)
+                    ->wrap()
+                    ->default('Tidak diketahui'),
 
                 // Skor SAW
                 TextColumn::make('skor')

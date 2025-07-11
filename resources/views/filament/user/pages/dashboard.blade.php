@@ -167,8 +167,10 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @foreach(\App\Models\HasilSeleksi::join('calon_mahasiswa', 'hasil_seleksi.calon_mahasiswa_id',
-                    '=', 'calon_mahasiswa.id')->orderBy('hasil_seleksi.rank', 'asc')->get(['hasil_seleksi.*',
-                    'calon_mahasiswa.nama']) as $hasil)
+                    '=', 'calon_mahasiswa.id')
+                    ->leftJoin('data_mahasiswa', 'calon_mahasiswa.data_mahasiswa_id', '=', 'data_mahasiswa.id')
+                    ->orderBy('hasil_seleksi.rank', 'asc')
+                    ->get(['hasil_seleksi.*', 'calon_mahasiswa.nama', 'data_mahasiswa.program_studi']) as $hasil)
                     <tr class="candidate-row hover:bg-gray-50">
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span
@@ -189,7 +191,12 @@
                                 <div class="ml-4">
                                     <div class="text-sm font-medium text-gray-900 candidate-name">{{ $hasil->nama }}
                                     </div>
-                                    <div class="text-sm text-gray-500">ID: {{ $hasil->calon_mahasiswa_id }}</div>
+                                    <div class="text-sm text-gray-500">
+                                        ID: {{ $hasil->calon_mahasiswa_id }}
+                                        @if($hasil->program_studi)
+                                        • <span class="text-blue-600 font-medium">{{ $hasil->program_studi }}</span>
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
                         </td>
@@ -435,8 +442,11 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 @foreach(\App\Models\HasilSeleksi::join('calon_mahasiswa', 'hasil_seleksi.calon_mahasiswa_id', '=',
-                'calon_mahasiswa.id')->orderBy('skor', 'desc')->limit(5)->get(['hasil_seleksi.*',
-                'calon_mahasiswa.nama']) as $index => $hasil)
+                'calon_mahasiswa.id')
+                ->leftJoin('data_mahasiswa', 'calon_mahasiswa.data_mahasiswa_id', '=', 'data_mahasiswa.id')
+                ->orderBy('skor', 'desc')
+                ->limit(5)
+                ->get(['hasil_seleksi.*', 'calon_mahasiswa.nama', 'data_mahasiswa.program_studi']) as $index => $hasil)
                 <tr>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span
@@ -445,7 +455,12 @@
                             #{{ $index + 1 }}
                         </span>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $hasil->nama }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900">{{ $hasil->nama }}</div>
+                        @if($hasil->program_studi)
+                        <div class="text-xs text-blue-600">{{ $hasil->program_studi }}</div>
+                        @endif
+                    </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($hasil->skor, 4) }}
                     </td>
                 </tr>

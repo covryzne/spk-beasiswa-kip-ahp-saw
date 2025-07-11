@@ -68,13 +68,14 @@ class DataMahasiswa extends Model
     public static function getCriteriaMapping(): array
     {
         return [
-            // Mapping default - bisa disesuaikan dengan kriteria yang ada
+            // Mapping berdasarkan kriteria baru
             'C1' => 'penghasilan_orang_tua',    // Penghasilan Orang Tua
             'C2' => 'kondisi_rumah',            // Kondisi Tempat Tinggal  
             'C3' => 'prestasi',                 // Prestasi
-            'C4' => 'status_bekerja',           // Status Pekerjaan
-            'C5' => 'support_orang_tua',        // Dukungan Orang Tua
-            // Tambah mapping lain sesuai kebutuhan
+            'C4' => 'pekerjaan_orang_tua',      // Pekerjaan Orang Tua
+            'C5' => 'komitmen',                 // Komitmen Kuliah
+            'C6' => 'kondisi_ekonomi',          // Aset Keluarga
+            'C7' => 'kip_status',               // Kartu Bantuan Sosial
         ];
     }
 
@@ -94,9 +95,13 @@ class DataMahasiswa extends Model
         } elseif (str_contains($kriteriaName, 'prestasi')) {
             return $this->convertToNumericValue($this->prestasi, 'prestasi');
         } elseif (str_contains($kriteriaName, 'pekerjaan') || str_contains($kriteriaName, 'kerja')) {
-            return $this->convertToNumericValue($this->status_bekerja, 'status_bekerja');
-        } elseif (str_contains($kriteriaName, 'dukungan') || str_contains($kriteriaName, 'support')) {
-            return $this->convertToNumericValue($this->support_orang_tua, 'support_orang_tua');
+            return $this->convertToNumericValue($this->pekerjaan_orang_tua, 'pekerjaan_orang_tua');
+        } elseif (str_contains($kriteriaName, 'komitmen') || str_contains($kriteriaName, 'kuliah')) {
+            return $this->convertToNumericValue($this->komitmen, 'komitmen');
+        } elseif (str_contains($kriteriaName, 'aset') || str_contains($kriteriaName, 'ekonomi')) {
+            return $this->convertToNumericValue($this->kondisi_ekonomi, 'aset_keluarga');
+        } elseif (str_contains($kriteriaName, 'kartu') || str_contains($kriteriaName, 'bantuan')) {
+            return $this->convertToNumericValue($this->kip_status, 'kartu_bantuan');
         } else {
             // Default fallback
             return rand(3, 5);
@@ -126,10 +131,34 @@ class DataMahasiswa extends Model
             ];
             return $kondisiMap[$value] ?? 3;
         }
-        if (str_contains($context, 'pekerjaan') || str_contains($context, 'kerja') || $context === 'status_bekerja') {
-            // Cost: Tidak bekerja = butuh beasiswa = nilai kecil = prioritas tinggi
-            // Binary options: 1 dan 2 (avoid 0 for SAW calculation)
-            return $value === 'Tidak Bekerja' ? 1 : 2;
+        if (str_contains($context, 'pekerjaan') || str_contains($context, 'kerja') || $context === 'status_bekerja' || $context === 'pekerjaan_orang_tua') {
+            // Cost: Tidak bekerja/pengangguran = butuh beasiswa = nilai kecil = prioritas tinggi
+            $pekerjaanMap = [
+                'Tidak Bekerja' => 1,
+                'Pengangguran' => 1,
+                'Buruh Harian' => 2,
+                'Petani' => 2,
+                'Pedagang Kecil' => 3,
+                'Karyawan' => 4,
+                'PNS' => 5,
+                'Wiraswasta' => 4,
+            ];
+            return $pekerjaanMap[$value] ?? 2;
+        }
+
+        if (str_contains($context, 'aset') || str_contains($context, 'ekonomi') || $context === 'kondisi_ekonomi' || $context === 'aset_keluarga') {
+            // Cost: Kondisi ekonomi buruk/aset sedikit = nilai kecil = prioritas tinggi
+            $ekonomiMap = [
+                'Berhutang' => 1,        // Prioritas tertinggi
+                'Defisit' => 1,
+                'Sangat Kurang' => 1,
+                'Kurang' => 2,
+                'Cukup' => 3,
+                'Surplus' => 4,
+                'Baik' => 4,
+                'Sangat Baik' => 5,      // Prioritas terendah
+            ];
+            return $ekonomiMap[$value] ?? 2;
         }
 
         // BENEFIT CRITERIA (nilai besar = lebih baik)
@@ -164,11 +193,21 @@ class DataMahasiswa extends Model
         if (str_contains($context, 'komitmen') || $context === 'komitmen') {
             // Benefit: Komitmen tinggi = nilai besar = prioritas tinggi
             $komitmenMap = [
-                'Cukup Berkomitmen' => 1,
-                'Berkomitmen' => 2,
-                'Sangat Berkomitmen' => 3,
+                'Kurang Berkomitmen' => 1,
+                'Cukup Berkomitmen' => 2,
+                'Berkomitmen' => 3,
+                'Sangat Berkomitmen' => 4,
             ];
             return $komitmenMap[$value] ?? 2;
+        }
+
+        if (str_contains($context, 'kartu') || str_contains($context, 'bantuan') || $context === 'kip_status' || $context === 'kartu_bantuan') {
+            // Benefit: Punya kartu bantuan = butuh beasiswa = nilai besar = prioritas tinggi
+            if (strtolower($value) === 'tidak' || strtolower($value) === 'tidak ada' || empty($value)) {
+                return 1; // Tidak punya kartu bantuan
+            } else {
+                return 4; // Punya kartu bantuan (KIP, PKH, KKS, dll)
+            }
         }
 
         if (str_contains($context, 'ekonomi') || $context === 'kondisi_ekonomi') {

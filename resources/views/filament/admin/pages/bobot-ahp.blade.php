@@ -225,9 +225,9 @@
                                 <td class="py-4 px-6 text-center">
                                     <span class="font-mono text-lg font-semibold text-gray-900 dark:text-gray-100">
                                         @if($k->bobot && $k->bobot > 0)
-                                        {{ number_format($k->bobot, 6) }}
+                                        {{ number_format((float)$k->bobot, 6) }}
                                         @elseif(isset($bobotResults[$k->kode]))
-                                        {{ number_format($bobotResults[$k->kode], 6) }}
+                                        {{ number_format((float)$bobotResults[$k->kode], 6) }}
                                         @else
                                         -
                                         @endif
@@ -235,18 +235,18 @@
                                 </td>
                                 <td class="py-4 px-6 text-center">
                                     @php
-                                    $bobotValue = $k->bobot && $k->bobot > 0 ? $k->bobot : ($bobotResults[$k->kode] ??
-                                    0);
+                                    $bobotValue = $k->bobot && $k->bobot > 0 ? (float)$k->bobot :
+                                    (float)($bobotResults[$k->kode] ?? 0);
                                     @endphp
                                     @if($bobotValue > 0)
                                     <div class="flex items-center justify-center">
                                         <div class="w-20 bg-gray-200 rounded-full h-2 mr-3">
                                             <div class="bg-blue-500 h-2 rounded-full"
-                                                x-data="{ width: {{ number_format($bobotValue * 100, 1) }} }"
+                                                x-data="{ width: {{ number_format((float)$bobotValue * 100, 1) }} }"
                                                 :style="'width: ' + width + '%'"></div>
                                         </div>
                                         <span
-                                            class="font-bold text-blue-600">{{ number_format($bobotValue * 100, 2) }}%</span>
+                                            class="font-bold text-blue-600">{{ number_format((float)$bobotValue * 100, 2) }}%</span>
                                     </div>
                                     @else
                                     -
@@ -310,8 +310,8 @@
                                         @php
                                         if($i === $j) {
                                         $cellValue = 1;
-                                        } elseif($i < $j) {
-                                            $cellValue=$data["matriks_{$kriteriaI->id}_{$kriteriaJ->id}"] ?? 1;
+                                        } elseif($i < $j) { $cellValue=$data["matriks_{$kriteriaI->
+                                            id}_{$kriteriaJ->id}"] ?? 1;
                                             } else {
                                             $upperValue = $data["matriks_{$kriteriaJ->id}_{$kriteriaI->id}"] ?? 1;
                                             $cellValue = $upperValue > 0 ? round(1 / $upperValue, 6) : 1;
@@ -337,8 +337,8 @@
                                         foreach($kriteria as $i => $kriteriaI) {
                                         if($i === $j) {
                                         $columnSum += 1;
-                                        } elseif($i < $j) {
-                                            $columnSum +=$data["matriks_{$kriteriaI->id}_{$kriteriaJ->id}"] ?? 1;
+                                        } elseif($i < $j) { $columnSum +=$data["matriks_{$kriteriaI->
+                                            id}_{$kriteriaJ->id}"] ?? 1;
                                             } else {
                                             $upperValue = $data["matriks_{$kriteriaJ->id}_{$kriteriaI->id}"] ?? 1;
                                             $columnSum += $upperValue > 0 ? round(1 / $upperValue, 6) : 1;
@@ -357,8 +357,10 @@
 
                         <!-- Contoh Perhitungan Jumlah Kolom -->
                         <div class="mt-4">
-                            <div class="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-200 dark:border-green-700">
-                                <p class="text-sm font-semibold text-green-800 dark:text-green-200 mb-2">📘 Contoh Perhitungan Jumlah Kolom C1:</p>
+                            <div
+                                class="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-200 dark:border-green-700">
+                                <p class="text-sm font-semibold text-green-800 dark:text-green-200 mb-2">📘 Contoh
+                                    Perhitungan Jumlah Kolom C1:</p>
                                 <div class="text-xs text-green-700 dark:text-green-300 space-y-1">
                                     @php
                                     $columnSum = 0;
@@ -366,8 +368,8 @@
                                     foreach($kriteria as $i => $kriteriaI) {
                                     if($i === 0) {
                                     $cellValue = 1;
-                                    } elseif($i < 0) {
-                                        $cellValue=$data["matriks_{$kriteriaI->id}_{$kriteria[0]->id}"] ?? 1;
+                                    } elseif($i < 0) { $cellValue=$data["matriks_{$kriteriaI->id}_{$kriteria[0]->id}"]
+                                        ?? 1;
                                         } else {
                                         $upperValue = $data["matriks_{$kriteria[0]->id}_{$kriteriaI->id}"] ?? 1;
                                         $cellValue = $upperValue > 0 ? round(1 / $upperValue, 3) : 1;
@@ -376,7 +378,9 @@
                                         $calculations[] = number_format($cellValue, 3);
                                         }
                                         @endphp
-                                        <p>• Jumlah C1 = {{ implode(' + ', $calculations) }} = <strong>{{ number_format($columnSum, 3) }}</strong></p>
+                                        <p>• Jumlah C1 = {{ implode(' + ', $calculations) }} =
+                                            <strong>{{ number_format($columnSum, 3) }}</strong>
+                                        </p>
                                         <p>• Nilai ini digunakan untuk normalisasi setiap elemen di kolom C1</p>
                                 </div>
                             </div>
@@ -422,8 +426,10 @@
                             </div>
 
                             <!-- Contoh Perhitungan Normalisasi -->
-                            <div class="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg mt-3 border border-green-200 dark:border-green-700">
-                                <p class="text-sm font-semibold text-green-800 dark:text-green-200 mb-2">📘 Contoh Perhitungan Normalisasi (C1 vs C1):</p>
+                            <div
+                                class="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg mt-3 border border-green-200 dark:border-green-700">
+                                <p class="text-sm font-semibold text-green-800 dark:text-green-200 mb-2">📘 Contoh
+                                    Perhitungan Normalisasi (C1 vs C1):</p>
                                 <div class="text-xs text-green-700 dark:text-green-300 space-y-1">
                                     @php
                                     // Calculate actual column sum for C1
@@ -431,8 +437,8 @@
                                     foreach($kriteria as $i => $kriteriaI) {
                                     if($i === 0) {
                                     $cellValue = 1;
-                                    } elseif($i < 0) {
-                                        $cellValue=$data["matriks_{$kriteriaI->id}_{$kriteria[0]->id}"] ?? 1;
+                                    } elseif($i < 0) { $cellValue=$data["matriks_{$kriteriaI->id}_{$kriteria[0]->id}"]
+                                        ?? 1;
                                         } else {
                                         $upperValue = $data["matriks_{$kriteria[0]->id}_{$kriteriaI->id}"] ?? 1;
                                         $cellValue = $upperValue > 0 ? round(1 / $upperValue, 6) : 1;
@@ -442,23 +448,33 @@
                                         $normalizedValue = 1 / $c1ColumnSum;
                                         @endphp
                                         <p>• a<sub>11</sub> = 1.000 (nilai C1 vs C1 dari matrix perbandingan)</p>
-                                        <p>• Σa<sub>1j</sub> = {{ number_format($c1ColumnSum, 3) }} (jumlah kolom C1)</p>
-                                        <p>• n<sub>11</sub> = 1.000 ÷ {{ number_format($c1ColumnSum, 3) }} = <strong>{{ number_format($normalizedValue, 4) }}</strong></p>
+                                        <p>• Σa<sub>1j</sub> = {{ number_format($c1ColumnSum, 3) }} (jumlah kolom C1)
+                                        </p>
+                                        <p>• n<sub>11</sub> = 1.000 ÷ {{ number_format($c1ColumnSum, 3) }} =
+                                            <strong>{{ number_format($normalizedValue, 4) }}</strong>
+                                        </p>
                                 </div>
                             </div>
 
                             <!-- Contoh Perhitungan Prioritas -->
-                            <div class="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg mt-2 border border-orange-200 dark:border-orange-700">
-                                <p class="text-sm font-semibold text-orange-800 dark:text-orange-200 mb-2">📘 Contoh Perhitungan Prioritas (C1):</p>
+                            <div
+                                class="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg mt-2 border border-orange-200 dark:border-orange-700">
+                                <p class="text-sm font-semibold text-orange-800 dark:text-orange-200 mb-2">📘 Contoh
+                                    Perhitungan Prioritas (C1):</p>
                                 <div class="text-xs text-orange-700 dark:text-orange-300 space-y-1">
                                     @if(isset($matrixNormalisasi[0]))
                                     @php
                                     $rowSum = array_sum($matrixNormalisasi[0]);
                                     $priority = $rowSum / count($kriteria);
-                                    $rowValues = array_map(function($val) { return number_format($val, 4); }, $matrixNormalisasi[0]);
+                                    $rowValues = array_map(function($val) { return number_format($val, 4); },
+                                    $matrixNormalisasi[0]);
                                     @endphp
-                                    <p>• Jumlah baris C1 = {{ implode(' + ', $rowValues) }} = {{ number_format($rowSum, 4) }}</p>
-                                    <p>• Prioritas C1 = {{ number_format($rowSum, 4) }} ÷ {{ count($kriteria) }} = <strong>{{ number_format($priority, 4) }}</strong></p>
+                                    <p>• Jumlah baris C1 = {{ implode(' + ', $rowValues) }} =
+                                        {{ number_format($rowSum, 4) }}
+                                    </p>
+                                    <p>• Prioritas C1 = {{ number_format($rowSum, 4) }} ÷ {{ count($kriteria) }} =
+                                        <strong>{{ number_format($priority, 4) }}</strong>
+                                    </p>
                                     @else
                                     <p>• Data normalisasi belum tersedia</p>
                                     @endif
@@ -521,8 +537,9 @@
                                         <td
                                             class="border border-gray-200 dark:border-gray-600 py-3 px-4 text-center bg-blue-50 dark:bg-blue-900/30 font-bold text-blue-600">
                                             @php
-                                            $bobotValue = $kriteriaI->bobot && $kriteriaI->bobot > 0 ? $kriteriaI->bobot
-                                            : ($bobotResults[$kriteriaI->kode] ?? 0);
+                                            $bobotValue = $kriteriaI->bobot && $kriteriaI->bobot > 0 ?
+                                            (float)$kriteriaI->bobot
+                                            : (float)($bobotResults[$kriteriaI->kode] ?? 0);
                                             @endphp
                                             @if($bobotValue > 0)
                                             {{ number_format($bobotValue, 4) }}
@@ -568,11 +585,12 @@
                                             @php
                                             $totalBobot = 0;
                                             foreach($kriteria as $k) {
-                                            $bobotValue = $k->bobot && $k->bobot > 0 ? $k->bobot : ($bobotResults[$k->kode] ?? 0);
+                                            $bobotValue = $k->bobot && $k->bobot > 0 ? (float)$k->bobot :
+                                            (float)($bobotResults[$k->kode] ?? 0);
                                             $totalBobot += $bobotValue;
                                             }
                                             @endphp
-                                            {{ number_format($totalBobot, 4) }}
+                                            {{ number_format((float)$totalBobot, 4) }}
                                         </td>
                                     </tr>
                                 </tbody>
@@ -610,8 +628,10 @@
                             </div>
 
                             <!-- Contoh Perhitungan Weighted Sum -->
-                            <div class="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg mt-3 border border-green-200 dark:border-green-700">
-                                <p class="text-sm font-semibold text-green-800 dark:text-green-200 mb-2">📘 Contoh Perhitungan Weighted Sum (C1):</p>
+                            <div
+                                class="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg mt-3 border border-green-200 dark:border-green-700">
+                                <p class="text-sm font-semibold text-green-800 dark:text-green-200 mb-2">📘 Contoh
+                                    Perhitungan Weighted Sum (C1):</p>
                                 <div class="text-xs text-green-700 dark:text-green-300 space-y-1">
                                     @php
                                     // Calculate weighted sum for first criteria (C1)
@@ -623,38 +643,50 @@
                                     // Get matrix value for C1 row
                                     if(0 === $j) {
                                     $matrixValue = 1;
-                                    } elseif(0 < $j) {
-                                        $matrixValue=$data["matriks_{$kriteria[0]->id}_{$kriteriaJ->id}"] ?? 1;
+                                    } elseif(0 < $j) { $matrixValue=$data["matriks_{$kriteria[0]->id}_{$kriteriaJ->id}"]
+                                        ?? 1;
                                         } else {
                                         $upperValue = $data["matriks_{$kriteriaJ->id}_{$kriteria[0]->id}"] ?? 1;
                                         $matrixValue = $upperValue > 0 ? round(1 / $upperValue, 6) : 1;
                                         }
 
                                         // Get weight
-                                        $weight = $kriteriaJ->bobot && $kriteriaJ->bobot > 0 ? $kriteriaJ->bobot : ($bobotResults[$kriteriaJ->kode] ?? 0);
+                                        $weight = $kriteriaJ->bobot && $kriteriaJ->bobot > 0 ? (float)$kriteriaJ->bobot
+                                        :
+                                        (float)($bobotResults[$kriteriaJ->kode] ?? 0);
 
                                         $calculation = $matrixValue * $weight;
                                         $totalWS += $calculation;
 
-                                        $wsCalculations[] = "(" . number_format($matrixValue, 3) . " × " . number_format($weight, 4) . ")";
+                                        $wsCalculations[] = "(" . number_format($matrixValue, 3) . " × " .
+                                        number_format($weight, 4) . ")";
                                         $wsValues[] = number_format($calculation, 4);
                                         }
                                         @endphp
                                         <p>• WS<sub>1</sub> = {{ implode(' + ', $wsCalculations) }}</p>
-                                        <p>• WS<sub>1</sub> = {{ implode(' + ', $wsValues) }} = <strong>{{ number_format($totalWS, 4) }}</strong></p>
+                                        <p>• WS<sub>1</sub> = {{ implode(' + ', $wsValues) }} =
+                                            <strong>{{ number_format($totalWS, 4) }}</strong>
+                                        </p>
                                 </div>
                             </div>
 
                             <!-- Contoh Perhitungan Lambda -->
-                            <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg mt-2 border border-blue-200 dark:border-blue-700">
-                                <p class="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">📘 Contoh Perhitungan λ (C1):</p>
+                            <div
+                                class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg mt-2 border border-blue-200 dark:border-blue-700">
+                                <p class="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">📘 Contoh
+                                    Perhitungan λ (C1):</p>
                                 <div class="text-xs text-blue-700 dark:text-blue-300 space-y-1">
                                     @php
-                                    $firstWeight = $kriteria[0]->bobot && $kriteria[0]->bobot > 0 ? $kriteria[0]->bobot : ($bobotResults[$kriteria[0]->kode] ?? 0);
+                                    $firstWeight = $kriteria[0]->bobot && $kriteria[0]->bobot > 0 ?
+                                    (float)$kriteria[0]->bobot
+                                    : (float)($bobotResults[$kriteria[0]->kode] ?? 0);
                                     $lambda = $firstWeight > 0 ? $totalWS / $firstWeight : 0;
                                     @endphp
                                     <p>• λ<sub>1</sub> = WS<sub>1</sub> ÷ w<sub>1</sub></p>
-                                    <p>• λ<sub>1</sub> = {{ number_format($totalWS, 4) }} ÷ {{ number_format($firstWeight, 4) }} = <strong>{{ number_format($lambda, 4) }}</strong></p>
+                                    <p>• λ<sub>1</sub> = {{ number_format($totalWS, 4) }} ÷
+                                        {{ number_format($firstWeight, 4) }} =
+                                        <strong>{{ number_format($lambda, 4) }}</strong>
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -699,8 +731,8 @@
                                         @php
                                         if($i === $j) {
                                         $cellValue = 1;
-                                        } elseif($i < $j) {
-                                            $cellValue=$data["matriks_{$kriteriaI->id}_{$kriteriaJ->id}"] ?? 1;
+                                        } elseif($i < $j) { $cellValue=$data["matriks_{$kriteriaI->
+                                            id}_{$kriteriaJ->id}"] ?? 1;
                                             } else {
                                             $upperValue = $data["matriks_{$kriteriaJ->id}_{$kriteriaI->id}"] ?? 1;
                                             $cellValue = $upperValue > 0 ? round(1 / $upperValue, 6) : 1;
@@ -722,8 +754,9 @@
                                             <td
                                                 class="border border-gray-200 dark:border-gray-600 py-3 px-4 text-center bg-green-50 dark:bg-green-900/30 font-semibold text-green-700 dark:text-green-300">
                                                 @php
-                                                $bobotValue = $kriteriaI->bobot && $kriteriaI->bobot > 0 ? $kriteriaI->bobot
-                                                : ($bobotResults[$kriteriaI->kode] ?? 0);
+                                                $bobotValue = $kriteriaI->bobot && $kriteriaI->bobot > 0 ?
+                                                (float)$kriteriaI->bobot
+                                                : (float)($bobotResults[$kriteriaI->kode] ?? 0);
                                                 @endphp
                                                 @if($bobotValue > 0)
                                                 {{ number_format($bobotValue, 4) }}
@@ -734,7 +767,7 @@
                                             <td
                                                 class="border border-gray-200 dark:border-gray-600 py-3 px-4 text-center bg-blue-50 dark:bg-blue-900/30 font-bold text-blue-600">
                                                 @if(isset($weightedSum[$i]) && $bobotValue > 0)
-                                                {{ number_format($weightedSum[$i] / $bobotValue, 4) }}
+                                                {{ number_format((float)$weightedSum[$i] / $bobotValue, 4) }}
                                                 @else
                                                 -
                                                 @endif
@@ -754,8 +787,8 @@
                                         foreach($kriteria as $i => $kriteriaI) {
                                         if($i === $j) {
                                         $columnSum += 1;
-                                        } elseif($i < $j) {
-                                            $columnSum +=$data["matriks_{$kriteriaI->id}_{$kriteriaJ->id}"] ?? 1;
+                                        } elseif($i < $j) { $columnSum +=$data["matriks_{$kriteriaI->
+                                            id}_{$kriteriaJ->id}"] ?? 1;
                                             } else {
                                             $upperValue = $data["matriks_{$kriteriaJ->id}_{$kriteriaI->id}"] ?? 1;
                                             $columnSum += $upperValue > 0 ? round(1 / $upperValue, 6) : 1;
@@ -782,11 +815,12 @@
                                                 @php
                                                 $totalBobot = 0;
                                                 foreach($kriteria as $k) {
-                                                $bobotValue = $k->bobot && $k->bobot > 0 ? $k->bobot : ($bobotResults[$k->kode] ?? 0);
+                                                $bobotValue = $k->bobot && $k->bobot > 0 ? (float)$k->bobot :
+                                                (float)($bobotResults[$k->kode] ?? 0);
                                                 $totalBobot += $bobotValue;
                                                 }
                                                 @endphp
-                                                {{ number_format($totalBobot, 4) }}
+                                                {{ number_format((float)$totalBobot, 4) }}
                                             </td>
                                             <td
                                                 class="border border-gray-200 dark:border-gray-600 py-3 px-4 text-center bg-blue-50 dark:bg-blue-900/30 font-bold text-blue-600">
@@ -811,7 +845,6 @@
                                 λmax = rata-rata dari kolom λ = WS/w
                             </p>
                         </div>
-                        @endif
                         @endif
                     </div>
                 </div>
@@ -863,11 +896,17 @@
 
                                         <!-- Contoh Perhitungan CI -->
                                         @if(isset($lambdaMax) && isset($consistencyIndex))
-                                        <div class="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg mt-3 border border-green-200 dark:border-green-700">
-                                            <p class="text-sm font-semibold text-green-800 dark:text-green-200 mb-2">📘 Contoh Perhitungan CI:</p>
+                                        <div
+                                            class="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg mt-3 border border-green-200 dark:border-green-700">
+                                            <p class="text-sm font-semibold text-green-800 dark:text-green-200 mb-2">📘
+                                                Contoh Perhitungan CI:</p>
                                             <div class="text-xs text-green-700 dark:text-green-300 space-y-1">
-                                                <p>• CI = ({{ number_format($lambdaMax, 4) }} - {{ count($kriteria) }}) ÷ ({{ count($kriteria) }} - 1)</p>
-                                                <p>• CI = {{ number_format($lambdaMax - count($kriteria), 4) }} ÷ {{ count($kriteria) - 1 }} = <strong>{{ number_format($consistencyIndex, 4) }}</strong></p>
+                                                <p>• CI = ({{ number_format($lambdaMax, 4) }} - {{ count($kriteria) }})
+                                                    ÷ ({{ count($kriteria) }} - 1)</p>
+                                                <p>• CI = {{ number_format($lambdaMax - count($kriteria), 4) }} ÷
+                                                    {{ count($kriteria) - 1 }} =
+                                                    <strong>{{ number_format($consistencyIndex, 4) }}</strong>
+                                                </p>
                                             </div>
                                         </div>
                                         @endif
@@ -894,10 +933,14 @@
 
                                         <!-- Contoh Perhitungan CR -->
                                         @if(isset($consistencyIndex) && isset($randomIndex) && isset($consistencyRatio))
-                                        <div class="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg mt-3 border border-orange-200 dark:border-orange-700">
-                                            <p class="text-sm font-semibold text-orange-800 dark:text-orange-200 mb-2">📘 Contoh Perhitungan CR:</p>
+                                        <div
+                                            class="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg mt-3 border border-orange-200 dark:border-orange-700">
+                                            <p class="text-sm font-semibold text-orange-800 dark:text-orange-200 mb-2">
+                                                📘 Contoh Perhitungan CR:</p>
                                             <div class="text-xs text-orange-700 dark:text-orange-300 space-y-1">
-                                                <p>• CR = {{ number_format($consistencyIndex, 4) }} ÷ {{ number_format($randomIndex, 2) }}</p>
+                                                <p>• CR = {{ number_format($consistencyIndex, 4) }} ÷
+                                                    {{ number_format($randomIndex, 2) }}
+                                                </p>
                                                 <p>• CR = <strong>{{ number_format($consistencyRatio, 4) }}</strong></p>
                                             </div>
                                         </div>
@@ -925,7 +968,9 @@
                                         </thead>
                                         <tbody>
                                             @php
-                                            $riValues = [1 => 0, 2 => 0, 3 => 0.58, 4 => 0.9, 5 => 1.12, 6 => 1.24, 7 => 1.32, 8 => 1.41, 9 => 1.45, 10 => 1.49, 11 => 1.51, 12 => 1.48, 13 => 1.56, 14 => 1.57, 15 => 1.59];
+                                            $riValues = [1 => 0, 2 => 0, 3 => 0.58, 4 => 0.9, 5 => 1.12, 6 => 1.24, 7 =>
+                                            1.32, 8 => 1.41, 9 => 1.45, 10 => 1.49, 11 => 1.51, 12 => 1.48, 13 => 1.56,
+                                            14 => 1.57, 15 => 1.59];
                                             @endphp
                                             @for($n = 1; $n <= 15; $n++) <tr
                                                 class="{{ $n == count($kriteria) ? 'bg-yellow-50 dark:bg-yellow-900/20 font-bold' : '' }}">
@@ -991,6 +1036,7 @@
                 </div>
                 @endif
             </div>
+            @endif
             @endif
         </div>
     </div>

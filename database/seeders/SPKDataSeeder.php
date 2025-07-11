@@ -43,37 +43,51 @@ class SPKDataSeeder extends Seeder
             [
                 'kode' => 'C1',
                 'nama' => 'Penghasilan Orang Tua',
-                'bobot' => null,
+                'bobot' => 0.2222, // Bobot 7
                 'jenis' => 'Cost',
                 'deskripsi' => 'Penghasilan bulanan orang tua/wali (Rp)',
             ],
             [
                 'kode' => 'C2',
                 'nama' => 'Kondisi Tempat Tinggal',
-                'bobot' => null,
+                'bobot' => 0.1587, // Bobot 5
                 'jenis' => 'Cost',
                 'deskripsi' => 'Kondisi fisik rumah tempat tinggal',
             ],
             [
                 'kode' => 'C3',
                 'nama' => 'Prestasi',
-                'bobot' => null,
+                'bobot' => 0.2222, // Bobot 7
                 'jenis' => 'Benefit',
                 'deskripsi' => 'Prestasi akademik atau non-akademik',
             ],
             [
                 'kode' => 'C4',
-                'nama' => 'Status Pekerjaan',
-                'bobot' => null,
+                'nama' => 'Pekerjaan Orang Tua',
+                'bobot' => 0.0317, // Bobot 1
                 'jenis' => 'Cost',
-                'deskripsi' => 'Status pekerjaan saat ini',
+                'deskripsi' => 'Status pekerjaan orang tua/wali',
             ],
             [
                 'kode' => 'C5',
-                'nama' => 'Dukungan Orang Tua',
-                'bobot' => null,
+                'nama' => 'Komitmen Kuliah',
+                'bobot' => 0.2857, // Bobot 9
                 'jenis' => 'Benefit',
-                'deskripsi' => 'Tingkat dukungan orang tua/wali',
+                'deskripsi' => 'Komitmen dan motivasi untuk menyelesaikan kuliah',
+            ],
+            [
+                'kode' => 'C6',
+                'nama' => 'Aset Keluarga',
+                'bobot' => 0.1587, // Bobot 5
+                'jenis' => 'Cost',
+                'deskripsi' => 'Kepemilikan aset dan properti keluarga',
+            ],
+            [
+                'kode' => 'C7',
+                'nama' => 'Kartu Bantuan Sosial',
+                'bobot' => 0.2222, // Bobot 7
+                'jenis' => 'Benefit',
+                'deskripsi' => 'Kepemilikan kartu bantuan sosial (KIP, PKH, KKS)',
             ],
         ];
 
@@ -230,6 +244,7 @@ class SPKDataSeeder extends Seeder
                     'Sangat Baik' => 5,    // Prioritas terendah
                 ];
                 return $kondisiMap[$value] ?? 3;
+
             case 'prestasi':
                 // BENEFIT: Prestasi tinggi = nilai besar = prioritas tinggi (0-100 scale)
                 if (is_numeric($value)) {
@@ -246,9 +261,56 @@ class SPKDataSeeder extends Seeder
                 return 20; // Ada prestasi tapi tidak spesifik
 
             case 'status_bekerja':
-                // COST: Tidak bekerja = butuh beasiswa = nilai kecil = prioritas tinggi
-                // Binary options: 1 dan 2 (avoid 0 for SAW calculation)
-                return $value === 'Tidak Bekerja' ? 1 : 2;
+            case 'pekerjaan_ortu':
+                // COST: Tidak bekerja/pengangguran = butuh beasiswa = nilai kecil = prioritas tinggi
+                $pekerjaanMap = [
+                    'Tidak Bekerja' => 1,
+                    'Pengangguran' => 1,
+                    'Buruh Harian' => 2,
+                    'Petani' => 2,
+                    'Pedagang Kecil' => 3,
+                    'Karyawan' => 4,
+                    'PNS' => 5,
+                    'Wiraswasta' => 4,
+                ];
+                return $pekerjaanMap[$value] ?? 2;
+
+            case 'komitmen_kuliah':
+                // BENEFIT: Komitmen tinggi = nilai besar = prioritas tinggi
+                $komitmenMap = [
+                    'Sangat Rendah' => 1,
+                    'Rendah' => 2,
+                    'Cukup' => 3,
+                    'Tinggi' => 4,
+                    'Sangat Tinggi' => 5,
+                ];
+                return $komitmenMap[$value] ?? 3;
+
+            case 'aset_keluarga':
+                // COST: Aset sedikit = butuh beasiswa = nilai kecil = prioritas tinggi
+                $asetMap = [
+                    'Tidak Ada' => 1,
+                    'Sangat Sedikit' => 1,
+                    'Sedikit' => 2,
+                    'Cukup' => 3,
+                    'Banyak' => 4,
+                    'Sangat Banyak' => 5,
+                ];
+                return $asetMap[$value] ?? 2;
+
+            case 'kartu_bantuan':
+                // BENEFIT: Punya kartu bantuan = butuh beasiswa = nilai besar = prioritas tinggi
+                $kartuMap = [
+                    'Tidak Ada' => 1,
+                    'KIP' => 4,
+                    'PKH' => 4,
+                    'KKS' => 4,
+                    'KIP + PKH' => 5,
+                    'KIP + KKS' => 5,
+                    'PKH + KKS' => 5,
+                    'Lengkap (KIP + PKH + KKS)' => 5,
+                ];
+                return $kartuMap[$value] ?? 1;
 
             case 'support_orang_tua':
                 // BENEFIT: Dukungan tinggi = nilai besar = prioritas tinggi
@@ -329,34 +391,38 @@ class SPKDataSeeder extends Seeder
     }
 
     /**
-     * Get priority weight for criteria based on scholarship context
+     * Get priority weight for criteria based on scholarship context and new bobot system
      */
     private function getCriteriaPriority($kriteria): int
     {
-        $kriteriaName = strtolower($kriteria->nama);
+        $kriteriaCode = strtoupper($kriteria->kode);
 
-        // Higher number = higher priority in scholarship selection
-        if (str_contains($kriteriaName, 'penghasilan') || str_contains($kriteriaName, 'gaji') || str_contains($kriteriaName, 'income')) {
-            return 5; // Very high priority - economic need
+        // Priority based on new bobot system:
+        // C5 Komitmen Kuliah (Bobot 9) - Priority 9
+        // C1 Penghasilan Orang Tua (Bobot 7) - Priority 7  
+        // C3 Prestasi (Bobot 7) - Priority 7
+        // C7 Kartu Bantuan Sosial (Bobot 7) - Priority 7
+        // C2 Kondisi Tempat Tinggal (Bobot 5) - Priority 5
+        // C6 Aset Keluarga (Bobot 5) - Priority 5
+        // C4 Pekerjaan Orang Tua (Bobot 1) - Priority 1
+
+        switch ($kriteriaCode) {
+            case 'C1': // Penghasilan Orang Tua
+                return 7;
+            case 'C2': // Kondisi Tempat Tinggal
+                return 5;
+            case 'C3': // Prestasi
+                return 7;
+            case 'C4': // Pekerjaan Orang Tua
+                return 1;
+            case 'C5': // Komitmen Kuliah
+                return 9;
+            case 'C6': // Aset Keluarga
+                return 5;
+            case 'C7': // Kartu Bantuan Sosial
+                return 7;
+            default:
+                return 3; // Default priority
         }
-
-        if (str_contains($kriteriaName, 'tempat tinggal') || str_contains($kriteriaName, 'kondisi') || str_contains($kriteriaName, 'rumah')) {
-            return 4; // High priority - living conditions
-        }
-
-        if (str_contains($kriteriaName, 'prestasi') || str_contains($kriteriaName, 'achievement')) {
-            return 3; // Medium-high priority - academic merit
-        }
-
-        if (str_contains($kriteriaName, 'dukungan') || str_contains($kriteriaName, 'support')) {
-            return 3; // Medium priority - family support
-        }
-
-        if (str_contains($kriteriaName, 'pekerjaan') || str_contains($kriteriaName, 'kerja') || str_contains($kriteriaName, 'job')) {
-            return 2; // Medium priority - work status
-        }
-
-        // Default priority based on criteria type
-        return $kriteria->jenis === 'Cost' ? 3 : 2;
     }
 }
