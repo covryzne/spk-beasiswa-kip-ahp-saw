@@ -149,14 +149,20 @@ class DataMahasiswa extends Model
         if (str_contains($context, 'aset') || str_contains($context, 'ekonomi') || $context === 'kondisi_ekonomi' || $context === 'aset_keluarga') {
             // Cost: Kondisi ekonomi buruk/aset sedikit = nilai kecil = prioritas tinggi
             $ekonomiMap = [
-                'Berhutang' => 1,        // Prioritas tertinggi
-                'Defisit' => 1,
-                'Sangat Kurang' => 1,
-                'Kurang' => 2,
-                'Cukup' => 3,
-                'Surplus' => 4,
-                'Baik' => 4,
-                'Sangat Baik' => 5,      // Prioritas terendah
+                'Tidak Ada' => 1,         // Prioritas tertinggi
+                'Sangat Sedikit' => 1,    // Prioritas tertinggi
+                'Sedikit' => 2,           // Prioritas tinggi
+                'Cukup' => 3,             // Prioritas menengah
+                'Banyak' => 4,            // Prioritas rendah
+                'Sangat Banyak' => 5,     // Prioritas terendah
+                // Legacy mappings for backward compatibility
+                'Berhutang' => 1,         // Legacy: map to Sangat Sedikit
+                'Defisit' => 1,           // Legacy: map to Sangat Sedikit
+                'Sangat Kurang' => 1,     // Legacy: map to Sangat Sedikit
+                'Kurang' => 2,            // Legacy: map to Sedikit
+                'Surplus' => 4,           // Legacy: map to Banyak
+                'Baik' => 4,              // Legacy: map to Banyak
+                'Sangat Baik' => 5,       // Legacy: map to Sangat Banyak
             ];
             return $ekonomiMap[$value] ?? 2;
         }
@@ -203,20 +209,32 @@ class DataMahasiswa extends Model
 
         if (str_contains($context, 'kartu') || str_contains($context, 'bantuan') || $context === 'kip_status' || $context === 'kartu_bantuan') {
             // Benefit: Punya kartu bantuan = butuh beasiswa = nilai besar = prioritas tinggi
-            if (strtolower($value) === 'tidak' || strtolower($value) === 'tidak ada' || empty($value)) {
-                return 1; // Tidak punya kartu bantuan
-            } else {
-                return 4; // Punya kartu bantuan (KIP, PKH, KKS, dll)
-            }
+            $kartuBantuanMap = [
+                'Tidak Ada' => 1,                    // Tidak punya kartu bantuan
+                'Tidak' => 1,                        // Tidak punya kartu bantuan
+                'KIP' => 4,                          // Punya KIP saja
+                'PKH' => 4,                          // Punya PKH saja
+                'KKS' => 4,                          // Punya KKS saja
+                'KIP + PKH' => 5,                    // Punya KIP dan PKH
+                'KIP + KKS' => 5,                    // Punya KIP dan KKS
+                'PKH + KKS' => 5,                    // Punya PKH dan KKS
+                'Lengkap KIP + PKH + KKS' => 5,      // Punya semua kartu bantuan
+            ];
+
+            return $kartuBantuanMap[$value] ?? 1; // Default tidak ada kartu
         }
 
         if (str_contains($context, 'ekonomi') || $context === 'kondisi_ekonomi') {
             // Cost: Kondisi ekonomi buruk = nilai kecil = prioritas tinggi
             $ekonomiMap = [
-                'Berhutang' => 1,    // Prioritas tertinggi
+                'Tidak Ada' => 1,         // Prioritas tertinggi
+                'Sangat Sedikit' => 1,    // Prioritas tertinggi
+                'Berhutang' => 1,         // Prioritas tertinggi
                 'Defisit' => 2,
                 'Cukup' => 3,
-                'Surplus' => 4,      // Prioritas terendah
+                'Banyak' => 4,
+                'Sangat Banyak' => 5,     // Prioritas terendah
+                'Surplus' => 4,           // Prioritas terendah
             ];
             return $ekonomiMap[$value] ?? 2;
         }
@@ -314,10 +332,24 @@ class DataMahasiswa extends Model
 
         if (str_contains($kriteriaName, 'ekonomi')) {
             return [
-                'Berhutang' => 'Berhutang',
-                'Defisit' => 'Defisit',
+                'Tidak Ada' => 'Tidak Ada',
+                'Sangat Sedikit' => 'Sangat Sedikit',
                 'Cukup' => 'Cukup',
-                'Surplus' => 'Surplus'
+                'Banyak' => 'Banyak',
+                'Sangat Banyak' => 'Sangat Banyak'
+            ];
+        }
+
+        if (str_contains($kriteriaName, 'kartu') || str_contains($kriteriaName, 'bantuan') || str_contains($kriteriaName, 'sosial')) {
+            return [
+                'Tidak Ada' => 'Tidak Ada',
+                'KIP' => 'KIP',
+                'PKH' => 'PKH',
+                'KKS' => 'KKS',
+                'KIP + PKH' => 'KIP + PKH',
+                'KIP + KKS' => 'KIP + KKS',
+                'PKH + KKS' => 'PKH + KKS',
+                'Lengkap KIP + PKH + KKS' => 'Lengkap KIP + PKH + KKS'
             ];
         }
 
@@ -336,9 +368,15 @@ class DataMahasiswa extends Model
         if (str_contains($kriteriaName, 'kondisi') || str_contains($kriteriaName, 'tempat tinggal')) {
             return $this->kondisi_rumah;
         } elseif (str_contains($kriteriaName, 'pekerjaan') || str_contains($kriteriaName, 'kerja')) {
-            return $this->status_bekerja;
+            return $this->pekerjaan_orang_tua;
         } elseif (str_contains($kriteriaName, 'dukungan') || str_contains($kriteriaName, 'support')) {
             return $this->support_orang_tua;
+        } elseif (str_contains($kriteriaName, 'komitmen') || str_contains($kriteriaName, 'kuliah')) {
+            return $this->komitmen;
+        } elseif (str_contains($kriteriaName, 'aset') || str_contains($kriteriaName, 'ekonomi')) {
+            return $this->kondisi_ekonomi;
+        } elseif (str_contains($kriteriaName, 'kartu') || str_contains($kriteriaName, 'bantuan') || str_contains($kriteriaName, 'sosial')) {
+            return $this->kip_status;
         } elseif (str_contains($kriteriaName, 'penghasilan')) {
             return $this->penghasilan_orang_tua;
         } elseif (str_contains($kriteriaName, 'prestasi')) {

@@ -298,6 +298,138 @@ class CalonMahasiswa extends Model
     }
 
     /**
+     * Get raw value for criteria (prioritize edited CalonMahasiswa value over original DataMahasiswa)
+     */
+    public function getRawValueForKriteria(string $kriteriaCode): ?string
+    {
+        $kriteriaCode = strtolower($kriteriaCode);
+
+        // Get the stored numeric value from CalonMahasiswa first (edited value)
+        $numericValue = $this->getAttribute($kriteriaCode);
+
+        if ($numericValue !== null) {
+            // Convert numeric value back to text using reverse mapping
+            return $this->convertNumericToText($kriteriaCode, $numericValue);
+        }
+
+        // Fallback to original DataMahasiswa value if no edit has been made
+        if (!$this->dataMahasiswa) {
+            return null;
+        }
+
+        // Map criteria code to DataMahasiswa fields for fallback
+        switch ($kriteriaCode) {
+            case 'c5':
+                return $this->dataMahasiswa->komitmen;
+            case 'c6':
+                return $this->dataMahasiswa->kondisi_ekonomi;
+            case 'c7':
+                return $this->dataMahasiswa->kip_status;
+            case 'c2':
+                return $this->dataMahasiswa->kondisi_rumah;
+            case 'c4':
+                return $this->dataMahasiswa->pekerjaan_orang_tua;
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Convert numeric value back to text for dropdown display
+     */
+    private function convertNumericToText(string $kriteriaCode, mixed $numericValue): ?string
+    {
+        if ($numericValue === null) {
+            return null;
+        }
+
+        switch ($kriteriaCode) {
+            case 'c5': // Komitmen Kuliah
+                switch ($numericValue) {
+                    case 1:
+                        return 'Kurang Berkomitmen';
+                    case 2:
+                        return 'Cukup Berkomitmen';
+                    case 3:
+                        return 'Berkomitmen';
+                    case 4:
+                        return 'Sangat Berkomitmen';
+                    default:
+                        return null;
+                }
+
+            case 'c6': // Kondisi Ekonomi/Aset Keluarga
+                switch ($numericValue) {
+                    case 1:
+                        return 'Tidak Ada';
+                    case 2:
+                        return 'Sangat Sedikit';
+                    case 3:
+                        return 'Cukup';
+                    case 4:
+                        return 'Banyak';
+                    case 5:
+                        return 'Sangat Banyak';
+                    default:
+                        return null;
+                }
+
+            case 'c7': // Kartu Bantuan Sosial
+                switch ($numericValue) {
+                    case 1:
+                        return 'Tidak Ada';
+                    case 4:
+                        return 'KIP'; // Could be KIP, PKH, or KKS individually
+                    case 5:
+                        return 'Lengkap KIP + PKH + KKS'; // Multiple cards or all cards
+                    default:
+                        return null;
+                }
+
+            case 'c2': // Kondisi Tempat Tinggal
+                switch ($numericValue) {
+                    case 1:
+                        return 'Sangat Kurang';
+                    case 2:
+                        return 'Kurang';
+                    case 3:
+                        return 'Cukup';
+                    case 4:
+                        return 'Baik';
+                    case 5:
+                        return 'Sangat Baik';
+                    default:
+                        return null;
+                }
+
+            case 'c4': // Pekerjaan Orang Tua
+                switch ($numericValue) {
+                    case 1:
+                        return 'Tidak Bekerja';
+                    case 2:
+                        return 'Pengangguran';
+                    case 3:
+                        return 'Buruh Harian';
+                    case 4:
+                        return 'Petani';
+                    case 5:
+                        return 'Pedagang Kecil';
+                    case 6:
+                        return 'Karyawan';
+                    case 7:
+                        return 'Wiraswasta';
+                    case 8:
+                        return 'PNS';
+                    default:
+                        return null;
+                }
+
+            default:
+                return null;
+        }
+    }
+
+    /**
      * Set criteria value by criteria code
      */
     public function setCriteriaValue(string $criteriaCode, mixed $value): void
@@ -421,62 +553,50 @@ class CalonMahasiswa extends Model
     }
 
     /**
-     * Get raw string value from numeric value for form display
+     * Convert numeric values back to text for display purposes
      */
-    public function getRawValueForKriteria(string $kriteriaName): mixed
+    public function convertNumericToTextValue(string $kriteriaKode, $numericValue): string
     {
-        $kriteriaName = strtolower($kriteriaName);
-        $kriteria = \App\Models\Kriteria::where('nama', 'like', '%' . $kriteriaName . '%')->first();
-
-        if (!$kriteria) {
-            return null;
+        if ($numericValue === null || $numericValue === '') {
+            return 'N/A';
         }
 
-        $fieldName = strtolower($kriteria->kode);
-        $numericValue = $this->{$fieldName};
+        $kriteriaKode = strtolower($kriteriaKode);
 
-        // If we have DataMahasiswa, use raw value from there (preferred)
-        if ($this->dataMahasiswa) {
-            return $this->dataMahasiswa->getRawMappedValueForKriteria($kriteriaName);
+        // C5: Komitmen Kuliah
+        if ($kriteriaKode === 'c5') {
+            return match ((int)$numericValue) {
+                1 => 'Kurang Berkomitmen',
+                2 => 'Cukup Berkomitmen',
+                3 => 'Berkomitmen',
+                4 => 'Sangat Berkomitmen',
+                default => 'N/A'
+            };
         }
 
-        // Otherwise, reverse map from numeric value to string
-        return $this->reverseMapNumericToString($kriteriaName, $numericValue);
-    }
-
-    /**
-     * Reverse map numeric value back to string for dropdown
-     */
-    private function reverseMapNumericToString(string $kriteriaName, $numericValue): mixed
-    {
-        $kriteriaName = strtolower($kriteriaName);
-
-        if (str_contains($kriteriaName, 'kondisi') || str_contains($kriteriaName, 'tempat tinggal')) {
-            $kondisiMap = [
-                1 => 'Sangat Kurang',
-                2 => 'Kurang',
+        // C6: Aset Keluarga/Kondisi Ekonomi
+        if ($kriteriaKode === 'c6') {
+            return match ((int)$numericValue) {
+                1 => 'Sangat Sedikit', // Covers both 'Tidak Ada' and 'Sangat Sedikit'
+                2 => 'Sedikit',
                 3 => 'Cukup',
-                4 => 'Baik',
-                5 => 'Sangat Baik'
-            ];
-            return $kondisiMap[$numericValue] ?? 'Cukup';
+                4 => 'Banyak',
+                5 => 'Sangat Banyak',
+                default => 'N/A'
+            };
         }
 
-        if (str_contains($kriteriaName, 'pekerjaan') || str_contains($kriteriaName, 'kerja')) {
-            return $numericValue == 1 ? 'Tidak Bekerja' : 'Bekerja';
+        // C7: Kartu Bantuan Sosial
+        if ($kriteriaKode === 'c7') {
+            return match ((int)$numericValue) {
+                1 => 'Tidak Ada',
+                4 => 'KIP', // Single card type like KIP, PKH, KKS
+                5 => 'KIP + PKH', // Multiple cards combination
+                default => 'N/A'
+            };
         }
 
-        if (str_contains($kriteriaName, 'dukungan') || str_contains($kriteriaName, 'support')) {
-            $supportMap = [
-                1 => 'Kurang Mendukung',
-                2 => 'Cukup Mendukung',
-                3 => 'Mendukung',
-                4 => 'Sangat Mendukung'
-            ];
-            return $supportMap[$numericValue] ?? 'Cukup Mendukung';
-        }
-
-        // For numeric fields (penghasilan, prestasi), return as is
-        return $numericValue;
+        // For other criteria, return as is (typically numeric values that don't need conversion)
+        return (string)$numericValue;
     }
 }

@@ -43,49 +43,49 @@ class SPKDataSeeder extends Seeder
             [
                 'kode' => 'C1',
                 'nama' => 'Penghasilan Orang Tua',
-                'bobot' => 0.2222, // Bobot 7
+                'bobot' => null, // Bobot 7
                 'jenis' => 'Cost',
                 'deskripsi' => 'Penghasilan bulanan orang tua/wali (Rp)',
             ],
             [
                 'kode' => 'C2',
                 'nama' => 'Kondisi Tempat Tinggal',
-                'bobot' => 0.1587, // Bobot 5
+                'bobot' => null, // Bobot 5
                 'jenis' => 'Cost',
                 'deskripsi' => 'Kondisi fisik rumah tempat tinggal',
             ],
             [
                 'kode' => 'C3',
                 'nama' => 'Prestasi',
-                'bobot' => 0.2222, // Bobot 7
+                'bobot' => null, // Bobot 7
                 'jenis' => 'Benefit',
                 'deskripsi' => 'Prestasi akademik atau non-akademik',
             ],
             [
                 'kode' => 'C4',
                 'nama' => 'Pekerjaan Orang Tua',
-                'bobot' => 0.0317, // Bobot 1
+                'bobot' => null, // Bobot 1
                 'jenis' => 'Cost',
                 'deskripsi' => 'Status pekerjaan orang tua/wali',
             ],
             [
                 'kode' => 'C5',
                 'nama' => 'Komitmen Kuliah',
-                'bobot' => 0.2857, // Bobot 9
+                'bobot' => null, // Bobot 9
                 'jenis' => 'Benefit',
                 'deskripsi' => 'Komitmen dan motivasi untuk menyelesaikan kuliah',
             ],
             [
                 'kode' => 'C6',
                 'nama' => 'Aset Keluarga',
-                'bobot' => 0.1587, // Bobot 5
+                'bobot' => null, // Bobot 5
                 'jenis' => 'Cost',
                 'deskripsi' => 'Kepemilikan aset dan properti keluarga',
             ],
             [
                 'kode' => 'C7',
                 'nama' => 'Kartu Bantuan Sosial',
-                'bobot' => 0.2222, // Bobot 7
+                'bobot' => null, // Bobot 7
                 'jenis' => 'Benefit',
                 'deskripsi' => 'Kepemilikan kartu bantuan sosial (KIP, PKH, KKS)',
             ],
@@ -155,7 +155,8 @@ class SPKDataSeeder extends Seeder
     {
         $this->command->info('📝 Seeding CalonMahasiswa from DataMahasiswa...');
 
-        $dataMahasiswaList = DataMahasiswa::all();
+        // Order by created_at DESC to prioritize newest/real data first (2024 data)
+        $dataMahasiswaList = DataMahasiswa::orderBy('created_at', 'desc')->get();
 
         if ($dataMahasiswaList->isEmpty()) {
             $this->command->warn('   ⚠️ No DataMahasiswa found! Make sure to run DataMahasiswaSeeder first.');
@@ -195,6 +196,9 @@ class SPKDataSeeder extends Seeder
             'nama' => $dataMahasiswa->nama,
             'kode' => 'CM-' . str_pad($dataMahasiswa->id, 3, '0', STR_PAD_LEFT),
             'catatan' => 'Auto-generated from DataMahasiswa',
+            // Use original timestamps from DataMahasiswa
+            'created_at' => $dataMahasiswa->created_at,
+            'updated_at' => $dataMahasiswa->updated_at,
         ];
 
         // Get kriteria mapping
@@ -275,42 +279,39 @@ class SPKDataSeeder extends Seeder
                 ];
                 return $pekerjaanMap[$value] ?? 2;
 
-            case 'komitmen_kuliah':
+            case 'komitmen':
                 // BENEFIT: Komitmen tinggi = nilai besar = prioritas tinggi
                 $komitmenMap = [
-                    'Sangat Rendah' => 1,
-                    'Rendah' => 2,
-                    'Cukup' => 3,
-                    'Tinggi' => 4,
-                    'Sangat Tinggi' => 5,
+                    'Kurang Berkomitmen' => 1,
+                    'Cukup Berkomitmen' => 2,
+                    'Berkomitmen' => 3,
+                    'Sangat Berkomitmen' => 4,
                 ];
-                return $komitmenMap[$value] ?? 3;
+                return $komitmenMap[$value] ?? rand(1, 4); // Varied default
 
-            case 'aset_keluarga':
-                // COST: Aset sedikit = butuh beasiswa = nilai kecil = prioritas tinggi
-                $asetMap = [
-                    'Tidak Ada' => 1,
-                    'Sangat Sedikit' => 1,
-                    'Sedikit' => 2,
+            case 'kondisi_ekonomi':
+                // COST: Kondisi ekonomi buruk/aset sedikit = nilai kecil = prioritas tinggi
+                $ekonomiMap = [
+                    'Berhutang' => 1,        // Prioritas tertinggi
+                    'Defisit' => 1,
+                    'Sangat Kurang' => 1,
+                    'Kurang' => 2,
                     'Cukup' => 3,
-                    'Banyak' => 4,
-                    'Sangat Banyak' => 5,
+                    'Surplus' => 4,
+                    'Baik' => 4,
+                    'Sangat Baik' => 5,      // Prioritas terendah
                 ];
-                return $asetMap[$value] ?? 2;
+                return $ekonomiMap[$value] ?? rand(1, 3); // Varied default, bias toward needy
 
-            case 'kartu_bantuan':
+            case 'kip_status':
                 // BENEFIT: Punya kartu bantuan = butuh beasiswa = nilai besar = prioritas tinggi
-                $kartuMap = [
-                    'Tidak Ada' => 1,
-                    'KIP' => 4,
-                    'PKH' => 4,
-                    'KKS' => 4,
-                    'KIP + PKH' => 5,
-                    'KIP + KKS' => 5,
-                    'PKH + KKS' => 5,
-                    'Lengkap (KIP + PKH + KKS)' => 5,
-                ];
-                return $kartuMap[$value] ?? 1;
+                if (strtolower($value) === 'tidak' || strtolower($value) === 'tidak ada' || empty($value)) {
+                    return 1; // Tidak punya kartu bantuan
+                } elseif (strtolower($value) === 'ya') {
+                    return 4; // Punya kartu bantuan (KIP, PKH, KKS, dll)
+                } else {
+                    return rand(2, 4); // Varied default for unclear cases
+                }
 
             case 'support_orang_tua':
                 // BENEFIT: Dukungan tinggi = nilai besar = prioritas tinggi
@@ -371,6 +372,17 @@ class SPKDataSeeder extends Seeder
         // Same criteria
         if ($kriteria1->id === $kriteria2->id) {
             return 1.0;
+        }
+
+        // Special case: C5 vs C6 - fix 0.5 to 3
+        $code1 = strtoupper($kriteria1->kode);
+        $code2 = strtoupper($kriteria2->kode);
+
+        if ($code1 == 'C5' && $code2 == 'C6') {
+            return 3.0; // C5 (Komitmen) lebih penting dari C6 (Aset)
+        }
+        if ($code1 == 'C6' && $code2 == 'C5') {
+            return 0.333; // Kebalikan dari 3
         }
 
         // Get priority weights based on criteria names for scholarship context

@@ -4,7 +4,8 @@
         <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg">
             <div class="px-6 py-8 text-white">
                 <h1 class="text-2xl font-bold mb-2">🎓 Dashboard Monitoring Beasiswa KIP Kuliah</h1>
-                <p class="text-blue-100">Pantau hasil seleksi calon mahasiswa penerima beasiswa KIP Kuliah untuk lulusan SMA/SMK sederajat secara real-time</p>
+                <p class="text-blue-100">Pantau hasil seleksi calon mahasiswa penerima beasiswa KIP Kuliah untuk lulusan
+                    SMA/SMK sederajat secara real-time</p>
                 <div class="mt-4 flex items-center text-blue-100 text-sm">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -182,8 +183,7 @@
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center">
                                 <div class="flex-shrink-0 h-10 w-10">
-                                    <div
-                                        class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                    <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
                                         <span
                                             class="text-sm font-medium text-gray-700">{{ substr($hasil->nama, 0, 2) }}</span>
                                     </div>
@@ -296,55 +296,55 @@
 
     <!-- JavaScript for Interactive Features -->
     <script>
-        function searchCandidate() {
-            const searchForm = document.getElementById('searchForm');
-            if (searchForm.classList.contains('hidden')) {
-                searchForm.classList.remove('hidden');
-                document.getElementById('search').focus();
-            } else {
-                searchForm.classList.add('hidden');
-                document.getElementById('search').value = '';
-                filterTable();
-            }
+    function searchCandidate() {
+        const searchForm = document.getElementById('searchForm');
+        if (searchForm.classList.contains('hidden')) {
+            searchForm.classList.remove('hidden');
+            document.getElementById('search').focus();
+        } else {
+            searchForm.classList.add('hidden');
+            document.getElementById('search').value = '';
+            filterTable();
         }
+    }
 
-        function filterTable() {
-            const searchInput = document.getElementById('search').value.toLowerCase();
-            const table = document.getElementById('candidateTable');
-            const rows = table.getElementsByClassName('candidate-row');
-            const noResults = document.getElementById('noResults');
-            let visibleRows = 0;
+    function filterTable() {
+        const searchInput = document.getElementById('search').value.toLowerCase();
+        const table = document.getElementById('candidateTable');
+        const rows = table.getElementsByClassName('candidate-row');
+        const noResults = document.getElementById('noResults');
+        let visibleRows = 0;
 
-            for (let i = 0; i < rows.length; i++) {
-                const nameCell = rows[i].getElementsByClassName('candidate-name')[0];
-                if (nameCell) {
-                    const name = nameCell.textContent.toLowerCase();
-                    if (name.includes(searchInput)) {
-                        rows[i].style.display = '';
-                        visibleRows++;
-                    } else {
-                        rows[i].style.display = 'none';
-                    }
+        for (let i = 0; i < rows.length; i++) {
+            const nameCell = rows[i].getElementsByClassName('candidate-name')[0];
+            if (nameCell) {
+                const name = nameCell.textContent.toLowerCase();
+                if (name.includes(searchInput)) {
+                    rows[i].style.display = '';
+                    visibleRows++;
+                } else {
+                    rows[i].style.display = 'none';
                 }
             }
-
-            if (visibleRows === 0 && searchInput !== '') {
-                noResults.classList.remove('hidden');
-            } else {
-                noResults.classList.add('hidden');
-            }
         }
 
-        function exportToPDF() {
-            // Placeholder for PDF export functionality
-            alert('Fitur export PDF akan segera tersedia!');
-            // TODO: Implement PDF export with libraries like jsPDF or server-side export
+        if (visibleRows === 0 && searchInput !== '') {
+            noResults.classList.remove('hidden');
+        } else {
+            noResults.classList.add('hidden');
         }
+    }
 
-        // Auto-refresh data every 5 minutes
-        setInterval(function() {
-            location.reload();
-        }, 300000);
+    function exportToPDF() {
+        // Placeholder for PDF export functionality
+        alert('Fitur export PDF akan segera tersedia!');
+        // TODO: Implement PDF export with libraries like jsPDF or server-side export
+    }
+
+    // Auto-refresh data every 5 minutes
+    setInterval(function() {
+        location.reload();
+    }, 300000);
     </script>
 </x-filament-panels::page>
 <div class="bg-white rounded-lg shadow">
@@ -399,7 +399,8 @@
                     <h4 class="text-lg font-semibold text-blue-900">Metode AHP</h4>
                 </div>
                 <p class="text-blue-700 text-sm leading-relaxed">
-                    Analytical Hierarchy Process untuk menentukan bobot kriteria: Penghasilan Orang Tua, Lokasi Tempat Tinggal, Hasil Tes Prestasi, Wawancara, dan Nilai Rapor SMA.
+                    Analytical Hierarchy Process untuk menentukan bobot kriteria: Penghasilan Orang Tua, Lokasi Tempat
+                    Tinggal, Hasil Tes Prestasi, Wawancara, dan Nilai Rapor SMA.
                 </p>
             </div>
 
@@ -415,7 +416,8 @@
                     <h4 class="text-lg font-semibold text-green-900">Metode SAW</h4>
                 </div>
                 <p class="text-green-700 text-sm leading-relaxed">
-                    Simple Additive Weighting untuk menghitung skor final lulusan SMA berdasarkan kriteria beasiswa KIP Kuliah dan menentukan ranking penerima.
+                    Simple Additive Weighting untuk menghitung skor final lulusan SMA berdasarkan kriteria beasiswa KIP
+                    Kuliah dan menentukan ranking penerima.
                 </p>
             </div>
         </div>

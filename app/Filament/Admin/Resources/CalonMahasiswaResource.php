@@ -150,31 +150,197 @@ class CalonMahasiswaResource extends Resource
         $label = $kriteria->nama;
         $description = $kriteria->deskripsi ?? '';
         $jenis = $kriteria->jenis;
+        $kriteriaName = strtolower($kriteria->nama);
 
-        // Check if criteria should use dropdown based on DataMahasiswa enum values
-        $dropdownOptions = $kriteria->getDropdownOptions();
-
-        if (!empty($dropdownOptions)) {
-            // Use dropdown for enum fields (without mapping values in options)
+        // Check for specific criteria that need dropdown options
+        if (str_contains($kriteriaName, 'komitmen') || str_contains($kriteriaName, 'kuliah')) {
+            // C5: Komitmen Kuliah - dropdown options
             return Select::make($fieldName)
                 ->label($label)
-                ->options($dropdownOptions)
+                ->options([
+                    'Kurang Berkomitmen' => 'Kurang Berkomitmen',
+                    'Cukup Berkomitmen' => 'Cukup Berkomitmen',
+                    'Berkomitmen' => 'Berkomitmen',
+                    'Sangat Berkomitmen' => 'Sangat Berkomitmen',
+                ])
                 ->required()
-                ->helperText($jenis)
-                ->afterStateHydrated(function (Select $component, $state, $record) use ($kriteria) {
-                    // On edit mode, convert numeric value back to string for dropdown
-                    if ($record && $state !== null) {
-                        $rawValue = $record->getRawValueForKriteria($kriteria->nama);
+                ->helperText($jenis . ' - Tingkat komitmen untuk menyelesaikan kuliah')
+                ->afterStateHydrated(function (Select $component, $state, $record) {
+                    if ($record && $record->dataMahasiswa) {
+                        // Always prioritize original DataMahasiswa value for consistent display
+                        $rawValue = $record->dataMahasiswa->komitmen;
+                        if ($rawValue !== null) {
+                            $component->state($rawValue);
+                            return;
+                        }
+
+                        // Only if no DataMahasiswa value, check CalonMahasiswa edited state
+                        $rawValue = $record->dataMahasiswa->komitmen;
                         if ($rawValue !== null) {
                             $component->state($rawValue);
                         }
                     }
                 })
-                ->dehydrateStateUsing(function ($state) use ($kriteria) {
+                ->dehydrateStateUsing(function ($state) {
                     // Convert dropdown string back to numeric for saving
                     if ($state !== null) {
                         $dataMahasiswa = new \App\Models\DataMahasiswa();
-                        return $dataMahasiswa->convertToNumericValue($state, $kriteria->nama);
+                        return $dataMahasiswa->convertToNumericValue($state, 'komitmen');
+                    }
+                    return $state;
+                });
+        } elseif (str_contains($kriteriaName, 'aset') || str_contains($kriteriaName, 'ekonomi')) {
+            // C6: Aset Keluarga/Kondisi Ekonomi - dropdown options
+            return Select::make($fieldName)
+                ->label($label)
+                ->options([
+                    'Tidak Ada' => 'Tidak Ada',
+                    'Sangat Sedikit' => 'Sangat Sedikit',
+                    'Sedikit' => 'Sedikit',
+                    'Cukup' => 'Cukup',
+                    'Banyak' => 'Banyak',
+                    'Sangat Banyak' => 'Sangat Banyak',
+                ])
+                ->required()
+                ->helperText($jenis . ' - Kondisi ekonomi dan kepemilikan aset keluarga')
+                ->afterStateHydrated(function (Select $component, $state, $record) {
+                    if ($record && $record->dataMahasiswa) {
+                        // Always prioritize original DataMahasiswa value for consistent display
+                        $rawValue = $record->dataMahasiswa->kondisi_ekonomi;
+                        if ($rawValue !== null) {
+                            $component->state($rawValue);
+                            return;
+                        }
+
+                        // Only if no DataMahasiswa value, check CalonMahasiswa edited state
+                        $rawValue = $record->dataMahasiswa->kondisi_ekonomi;
+                        if ($rawValue !== null) {
+                            $component->state($rawValue);
+                        }
+                    }
+                })
+                ->dehydrateStateUsing(function ($state) {
+                    // Convert dropdown string back to numeric for saving
+                    if ($state !== null) {
+                        $dataMahasiswa = new \App\Models\DataMahasiswa();
+                        return $dataMahasiswa->convertToNumericValue($state, 'kondisi_ekonomi');
+                    }
+                    return $state;
+                });
+        } elseif (str_contains($kriteriaName, 'kartu') || str_contains($kriteriaName, 'bantuan') || str_contains($kriteriaName, 'sosial')) {
+            // C7: Kartu Bantuan Sosial - dropdown options
+            return Select::make($fieldName)
+                ->label($label)
+                ->options([
+                    'Tidak Ada' => 'Tidak Ada',
+                    'KIP' => 'KIP',
+                    'PKH' => 'PKH',
+                    'KKS' => 'KKS',
+                    'KIP + PKH' => 'KIP + PKH',
+                    'KIP + KKS' => 'KIP + KKS',
+                    'PKH + KKS' => 'PKH + KKS',
+                    'Lengkap KIP + PKH + KKS' => 'Lengkap KIP + PKH + KKS',
+                ])
+                ->required()
+                ->helperText($jenis . ' - Kepemilikan kartu bantuan sosial (KIP, PKH, KKS)')
+                ->afterStateHydrated(function (Select $component, $state, $record) {
+                    if ($record && $record->dataMahasiswa) {
+                        // Always prioritize original DataMahasiswa value for consistent display
+                        $rawValue = $record->dataMahasiswa->kip_status;
+                        if ($rawValue !== null) {
+                            $component->state($rawValue);
+                            return;
+                        }
+
+                        // Only if no DataMahasiswa value, check CalonMahasiswa edited state
+                        $rawValue = $record->dataMahasiswa->kip_status;
+                        if ($rawValue !== null) {
+                            $component->state($rawValue);
+                        }
+                    }
+                })
+                ->dehydrateStateUsing(function ($state) {
+                    // Convert dropdown string back to numeric for saving
+                    if ($state !== null) {
+                        $dataMahasiswa = new \App\Models\DataMahasiswa();
+                        return $dataMahasiswa->convertToNumericValue($state, 'kip_status');
+                    }
+                    return $state;
+                });
+        } elseif (str_contains($kriteriaName, 'kondisi') || str_contains($kriteriaName, 'tempat tinggal')) {
+            // C2: Kondisi Tempat Tinggal - dropdown options  
+            return Select::make($fieldName)
+                ->label($label)
+                ->options([
+                    'Sangat Kurang' => 'Sangat Kurang',
+                    'Kurang' => 'Kurang',
+                    'Cukup' => 'Cukup',
+                    'Baik' => 'Baik',
+                    'Sangat Baik' => 'Sangat Baik',
+                ])
+                ->required()
+                ->helperText($jenis . ' - Kondisi tempat tinggal saat ini')
+                ->afterStateHydrated(function (Select $component, $state, $record) {
+                    if ($record && $record->dataMahasiswa) {
+                        // Always prioritize original DataMahasiswa value for consistent display
+                        $rawValue = $record->dataMahasiswa->kondisi_rumah;
+                        if ($rawValue !== null) {
+                            $component->state($rawValue);
+                            return;
+                        }
+
+                        // Only if no DataMahasiswa value, check CalonMahasiswa edited state
+                        $rawValue = $record->dataMahasiswa->kondisi_rumah;
+                        if ($rawValue !== null) {
+                            $component->state($rawValue);
+                        }
+                    }
+                })
+                ->dehydrateStateUsing(function ($state) {
+                    // Convert dropdown string back to numeric for saving
+                    if ($state !== null) {
+                        $dataMahasiswa = new \App\Models\DataMahasiswa();
+                        return $dataMahasiswa->convertToNumericValue($state, 'kondisi_rumah');
+                    }
+                    return $state;
+                });
+        } elseif (str_contains($kriteriaName, 'pekerjaan') || str_contains($kriteriaName, 'kerja')) {
+            // C4: Pekerjaan Orang Tua - dropdown options
+            return Select::make($fieldName)
+                ->label($label)
+                ->options([
+                    'Tidak Bekerja' => 'Tidak Bekerja',
+                    'Pengangguran' => 'Pengangguran',
+                    'Buruh Harian' => 'Buruh Harian',
+                    'Petani' => 'Petani',
+                    'Pedagang Kecil' => 'Pedagang Kecil',
+                    'Karyawan' => 'Karyawan',
+                    'Wiraswasta' => 'Wiraswasta',
+                    'PNS' => 'PNS',
+                ])
+                ->required()
+                ->helperText($jenis . ' - Jenis pekerjaan orang tua/wali')
+                ->afterStateHydrated(function (Select $component, $state, $record) {
+                    if ($record && $record->dataMahasiswa) {
+                        // Always prioritize original DataMahasiswa value for consistent display
+                        $rawValue = $record->dataMahasiswa->pekerjaan_orang_tua;
+                        if ($rawValue !== null) {
+                            $component->state($rawValue);
+                            return;
+                        }
+
+                        // Only if no DataMahasiswa value, check CalonMahasiswa edited state
+                        $rawValue = $record->dataMahasiswa->pekerjaan_orang_tua;
+                        if ($rawValue !== null) {
+                            $component->state($rawValue);
+                        }
+                    }
+                })
+                ->dehydrateStateUsing(function ($state) {
+                    // Convert dropdown string back to numeric for saving
+                    if ($state !== null) {
+                        $dataMahasiswa = new \App\Models\DataMahasiswa();
+                        return $dataMahasiswa->convertToNumericValue($state, 'pekerjaan_orang_tua');
                     }
                     return $state;
                 });
@@ -260,6 +426,7 @@ class CalonMahasiswaResource extends Resource
 
         return $table
             ->columns($columns)
+            ->defaultSort('created_at', 'desc') // Show newest records first (real data 2024)
             ->filters([
                 Tables\Filters\SelectFilter::make('c2')
                     ->label('Filter Lokasi')
@@ -393,23 +560,33 @@ class CalonMahasiswaResource extends Resource
                 ->formatStateUsing(fn($state): string => $state ? number_format($state, 1) . ' km' : 'N/A')
                 ->tooltip(fn($state): string => 'Jarak: ' . number_format($state, 1) . ' km');
         } elseif (str_contains($kriteriaName, 'pekerjaan') || str_contains($kriteriaName, 'kerja')) {
-            // Status Pekerjaan - show raw value from DataMahasiswa
+            // Pekerjaan Orang Tua - show raw value from DataMahasiswa
             return Tables\Columns\BadgeColumn::make($fieldName)
                 ->label($label)
                 ->formatStateUsing(function ($state, $record) {
                     if ($record->dataMahasiswa) {
-                        return $record->dataMahasiswa->status_bekerja ?? 'N/A';
+                        return $record->dataMahasiswa->pekerjaan_orang_tua ?? 'N/A';
                     }
                     // Fallback to numeric mapping
                     return match ((string)$state) {
                         '1' => 'Tidak Bekerja',
-                        '2' => 'Bekerja',
+                        '2' => 'Petani',
+                        '3' => 'Pedagang Kecil',
+                        '4' => 'Karyawan',
+                        '5' => 'PNS',
                         default => 'N/A'
                     };
                 })
                 ->color(function ($state, $record) {
                     if ($record->dataMahasiswa) {
-                        return $record->dataMahasiswa->status_bekerja === 'Tidak Bekerja' ? 'success' : 'warning';
+                        return match ($record->dataMahasiswa->pekerjaan_orang_tua) {
+                            'Tidak Bekerja', 'Pengangguran' => 'success', // High priority
+                            'Petani', 'Buruh Harian' => 'info',
+                            'Pedagang Kecil' => 'warning',
+                            'Karyawan', 'Wiraswasta' => 'warning',
+                            'PNS' => 'danger', // Low priority
+                            default => 'gray'
+                        };
                     }
                     return 'gray';
                 });
@@ -441,6 +618,105 @@ class CalonMahasiswaResource extends Resource
                         };
                     }
                     return 'gray';
+                });
+        } elseif (str_contains($kriteriaName, 'komitmen') || str_contains($kriteriaName, 'kuliah')) {
+            // C5: Komitmen Kuliah - prioritize edited values in CalonMahasiswa over original DataMahasiswa
+            return Tables\Columns\BadgeColumn::make($fieldName)
+                ->label($label)
+                ->formatStateUsing(function ($state, $record) {
+                    // First, check if there's an edited value in CalonMahasiswa
+                    if ($state !== null && $state !== '') {
+                        // Convert numeric value to text using the model method
+                        return $record->convertNumericToTextValue('c5', $state);
+                    }
+                    // Fallback to original DataMahasiswa value
+                    if ($record->dataMahasiswa) {
+                        return $record->dataMahasiswa->komitmen ?? 'N/A';
+                    }
+                    return 'N/A';
+                })
+                ->color(function ($state, $record) {
+                    // Determine display text for color mapping
+                    $displayText = '';
+                    if ($state !== null && $state !== '') {
+                        $displayText = $record->convertNumericToTextValue('c5', $state);
+                    } elseif ($record->dataMahasiswa) {
+                        $displayText = $record->dataMahasiswa->komitmen ?? '';
+                    }
+
+                    return match ($displayText) {
+                        'Sangat Berkomitmen' => 'success',
+                        'Berkomitmen' => 'info',
+                        'Cukup Berkomitmen' => 'warning',
+                        'Kurang Berkomitmen' => 'danger',
+                        default => 'gray'
+                    };
+                });
+        } elseif (str_contains($kriteriaName, 'aset') || str_contains($kriteriaName, 'ekonomi')) {
+            // C6: Aset Keluarga/Kondisi Ekonomi - show raw value from DataMahasiswa
+            return Tables\Columns\BadgeColumn::make($fieldName)
+                ->label($label)
+                ->formatStateUsing(function ($state, $record) {
+                    // Always prioritize raw value from DataMahasiswa
+                    if ($record->dataMahasiswa) {
+                        return $record->dataMahasiswa->kondisi_ekonomi ?? 'N/A';
+                    }
+                    // Fallback to numeric mapping
+                    return match ((string)$state) {
+                        '1' => 'Sangat Sedikit',
+                        '2' => 'Sedikit',
+                        '3' => 'Cukup',
+                        '4' => 'Banyak',
+                        '5' => 'Sangat Banyak',
+                        default => 'N/A'
+                    };
+                })
+                ->color(function ($state, $record) {
+                    // Determine display text for color mapping
+                    $displayText = '';
+                    if ($record->dataMahasiswa) {
+                        $displayText = $record->dataMahasiswa->kondisi_ekonomi ?? '';
+                    }
+
+                    return match ($displayText) {
+                        'Tidak Ada', 'Sangat Sedikit' => 'success', // High priority
+                        'Sedikit' => 'info',
+                        'Cukup' => 'warning',
+                        'Banyak' => 'warning',
+                        'Sangat Banyak' => 'danger', // Low priority
+                        default => 'gray'
+                    };
+                });
+        } elseif (str_contains($kriteriaName, 'kartu') || str_contains($kriteriaName, 'bantuan') || str_contains($kriteriaName, 'sosial')) {
+            // C7: Kartu Bantuan Sosial - show raw value from DataMahasiswa
+            return Tables\Columns\BadgeColumn::make($fieldName)
+                ->label($label)
+                ->formatStateUsing(function ($state, $record) {
+                    // Always prioritize raw value from DataMahasiswa
+                    if ($record->dataMahasiswa) {
+                        return $record->dataMahasiswa->kip_status ?? 'N/A';
+                    }
+                    // Fallback to numeric mapping
+                    return match ((string)$state) {
+                        '1' => 'Tidak Ada',
+                        '4' => 'KIP',
+                        '5' => 'KIP + PKH',
+                        default => 'N/A'
+                    };
+                })
+                ->color(function ($state, $record) {
+                    // Determine display text for color mapping
+                    $displayText = '';
+                    if ($record->dataMahasiswa) {
+                        $displayText = $record->dataMahasiswa->kip_status ?? '';
+                    }
+
+                    return match ($displayText) {
+                        'KIP + PKH', 'KIP + KKS', 'Lengkap KIP + PKH + KKS', 'KIP + PKH + KKS' => 'success', // High priority - multiple cards
+                        'KIP', 'PKH', 'KKS' => 'info', // Medium priority - single card
+                        'Tidak Ada', 'Tidak' => 'danger', // Low priority - no social aid card
+                        default => 'gray'
+                    };
                 });
         } else {
             // Generic numeric column for other criteria
