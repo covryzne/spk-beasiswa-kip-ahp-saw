@@ -41,161 +41,418 @@ class DataMahasiswaResource extends Resource
                             ->label('Program Studi'),
                     ])->columns(2),
 
-                Forms\Components\Section::make('Data Wawancara')
+                Forms\Components\Section::make('Data Wawancara & Bukti Pendukung')
                     ->schema([
-                        Forms\Components\Select::make('kip_status')
-                            ->options([
-                                'Ya' => 'Ya (Memiliki KIP/DTKS/PKH/KKS/PPK/Panti)',
-                                'Tidak' => 'Tidak'
-                            ])
-                            ->required()
-                            ->label('Status KIP/DTKS/PKH/KKS/PPK'),
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\Select::make('kip_status')
+                                    ->options([
+                                        'KIP + PKH' => 'KIP + PKH',
+                                        'Lengkap KIP + PKH + KKS' => 'Lengkap KIP + PKH + KKS',
+                                        'KIP + KKS' => 'KIP + KKS',
+                                        'PKH + KKS' => 'PKH + KKS',
+                                        'KIP' => 'KIP',
+                                        'PKH' => 'PKH',
+                                        'KKS' => 'KKS',
+                                        'Tidak Ada' => 'Tidak Ada',
+                                        'Ya' => 'Ya (Lainnya)',
+                                        'Tidak' => 'Tidak'
+                                    ])
+                                    ->required()
+                                    ->label('Status KIP/DTKS/PKH/KKS/PPK')
+                                    ->columnSpan(2),
+                                Forms\Components\FileUpload::make('bukti_kip_status')
+                                    ->label('Bukti KIP/DTKS/PKH/KKS')
+                                    ->acceptedFileTypes(['image/*', 'application/pdf'])
+                                    ->directory('bukti-pendukung/kip-status')
+                                    ->visibility('private')
+                                    ->downloadable()
+                                    ->previewable()
+                                    ->columnSpan(1),
+                            ]),
 
-                        Forms\Components\Select::make('orang_tua_status')
-                            ->options([
-                                'Masih Ada' => 'Masih Ada',
-                                'Ayah Meninggal' => 'Ayah Meninggal',
-                                'Ibu Meninggal' => 'Ibu Meninggal',
-                                'Keduanya Meninggal' => 'Keduanya Meninggal'
-                            ])
-                            ->required()
-                            ->label('Status Orang Tua'),
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\Select::make('orang_tua_status')
+                                    ->options([
+                                        'Masih Ada' => 'Masih Ada',
+                                        'Ayah Meninggal' => 'Ayah Meninggal',
+                                        'Ibu Meninggal' => 'Ibu Meninggal',
+                                        'Keduanya Meninggal' => 'Keduanya Meninggal'
+                                    ])
+                                    ->required()
+                                    ->label('Status Orang Tua')
+                                    ->columnSpan(2),
+                                Forms\Components\FileUpload::make('bukti_orang_tua_status')
+                                    ->label('Bukti Status Orang Tua')
+                                    ->acceptedFileTypes(['image/*', 'application/pdf'])
+                                    ->directory('bukti-pendukung/orang-tua-status')
+                                    ->visibility('private')
+                                    ->downloadable()
+                                    ->previewable()
+                                    ->columnSpan(1),
+                            ]),
 
-                        Forms\Components\TextInput::make('pekerjaan_orang_tua')
-                            ->required()
-                            ->maxLength(255)
-                            ->label('Pekerjaan Orang Tua'),
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\Select::make('pekerjaan_orang_tua')
+                                    ->options([
+                                        'Tidak Bekerja' => 'Tidak Bekerja',
+                                        'Pengangguran' => 'Pengangguran',
+                                        'Buruh Harian' => 'Buruh Harian',
+                                        'Petani' => 'Petani',
+                                        'Pedagang Kecil' => 'Pedagang Kecil',
+                                        'Karyawan' => 'Karyawan',
+                                        'Wiraswasta' => 'Wiraswasta',
+                                        'PNS' => 'PNS',
+                                        'Tukang Ojek' => 'Tukang Ojek',
+                                        'Tukang Becak' => 'Tukang Becak',
+                                        'Buruh Tani' => 'Buruh Tani',
+                                        'Dirawat Nenek' => 'Dirawat Nenek'
+                                    ])
+                                    ->required()
+                                    ->label('Pekerjaan Orang Tua')
+                                    ->columnSpan(2),
+                                Forms\Components\FileUpload::make('bukti_pekerjaan_orang_tua')
+                                    ->label('Bukti Pekerjaan Orang Tua')
+                                    ->acceptedFileTypes(['image/*', 'application/pdf'])
+                                    ->directory('bukti-pendukung/pekerjaan-orang-tua')
+                                    ->visibility('private')
+                                    ->downloadable()
+                                    ->previewable()
+                                    ->columnSpan(1),
+                            ]),
 
-                        Forms\Components\TextInput::make('penghasilan_orang_tua')
-                            ->required()
-                            ->numeric()
-                            ->prefix('Rp')
-                            ->label('Penghasilan Orang Tua per Bulan'),
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\TextInput::make('penghasilan_orang_tua')
+                                    ->required()
+                                    ->numeric()
+                                    ->prefix('Rp')
+                                    ->label('Penghasilan Orang Tua per Bulan')
+                                    ->columnSpan(2),
+                                Forms\Components\FileUpload::make('bukti_penghasilan_orang_tua')
+                                    ->label('Bukti Penghasilan')
+                                    ->acceptedFileTypes(['image/*', 'application/pdf'])
+                                    ->directory('bukti-pendukung/penghasilan-orang-tua')
+                                    ->visibility('private')
+                                    ->downloadable()
+                                    ->previewable()
+                                    ->columnSpan(1),
+                            ]),
 
-                        Forms\Components\TextInput::make('jumlah_saudara')
-                            ->required()
-                            ->numeric()
-                            ->minValue(0)
-                            ->label('Jumlah Saudara Kandung'),
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\TextInput::make('jumlah_saudara')
+                                    ->required()
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->label('Jumlah Saudara Kandung')
+                                    ->columnSpan(2),
+                                Forms\Components\FileUpload::make('bukti_jumlah_saudara')
+                                    ->label('Bukti Jumlah Saudara')
+                                    ->acceptedFileTypes(['image/*', 'application/pdf'])
+                                    ->directory('bukti-pendukung/jumlah-saudara')
+                                    ->visibility('private')
+                                    ->downloadable()
+                                    ->previewable()
+                                    ->columnSpan(1),
+                            ]),
 
-                        Forms\Components\Select::make('kepemilikan_rumah')
-                            ->options([
-                                'Milik Sendiri' => 'Milik Sendiri',
-                                'Sewa' => 'Sewa',
-                                'Kontrak' => 'Kontrak',
-                                'Menumpang' => 'Menumpang',
-                                'Lainnya' => 'Lainnya'
-                            ])
-                            ->required()
-                            ->label('Status Kepemilikan Rumah'),
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\Select::make('kepemilikan_rumah')
+                                    ->options([
+                                        'Milik Sendiri' => 'Milik Sendiri',
+                                        'Sewa' => 'Sewa',
+                                        'Kontrak' => 'Kontrak',
+                                        'Menumpang' => 'Menumpang',
+                                        'Lainnya' => 'Lainnya'
+                                    ])
+                                    ->required()
+                                    ->label('Status Kepemilikan Rumah')
+                                    ->columnSpan(2),
+                                Forms\Components\FileUpload::make('bukti_kepemilikan_rumah')
+                                    ->label('Bukti Kepemilikan Rumah')
+                                    ->acceptedFileTypes(['image/*', 'application/pdf'])
+                                    ->directory('bukti-pendukung/kepemilikan-rumah')
+                                    ->visibility('private')
+                                    ->downloadable()
+                                    ->previewable()
+                                    ->columnSpan(1),
+                            ]),
 
-                        Forms\Components\Select::make('kondisi_rumah')
-                            ->options([
-                                'Sangat Baik' => 'Sangat Baik',
-                                'Baik' => 'Baik',
-                                'Cukup' => 'Cukup',
-                                'Kurang' => 'Kurang',
-                                'Sangat Kurang' => 'Sangat Kurang'
-                            ])
-                            ->required()
-                            ->label('Kondisi Fisik Rumah'),
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\Select::make('kondisi_rumah')
+                                    ->options([
+                                        'Sangat Baik' => 'Sangat Baik',
+                                        'Baik' => 'Baik',
+                                        'Cukup' => 'Cukup',
+                                        'Kurang' => 'Kurang',
+                                        'Sangat Kurang' => 'Sangat Kurang'
+                                    ])
+                                    ->required()
+                                    ->label('Kondisi Fisik Rumah')
+                                    ->columnSpan(2),
+                                Forms\Components\FileUpload::make('bukti_kondisi_rumah')
+                                    ->label('Bukti Kondisi Rumah')
+                                    ->acceptedFileTypes(['image/*', 'application/pdf'])
+                                    ->directory('bukti-pendukung/kondisi-rumah')
+                                    ->visibility('private')
+                                    ->downloadable()
+                                    ->previewable()
+                                    ->columnSpan(1),
+                            ]),
 
-                        Forms\Components\TextInput::make('daya_listrik')
-                            ->required()
-                            ->numeric()
-                            ->suffix('Watt')
-                            ->label('Daya Listrik'),
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\TextInput::make('daya_listrik')
+                                    ->required()
+                                    ->numeric()
+                                    ->suffix('Watt')
+                                    ->label('Daya Listrik')
+                                    ->columnSpan(2),
+                                Forms\Components\FileUpload::make('bukti_daya_listrik')
+                                    ->label('Bukti Daya Listrik')
+                                    ->acceptedFileTypes(['image/*', 'application/pdf'])
+                                    ->directory('bukti-pendukung/daya-listrik')
+                                    ->visibility('private')
+                                    ->downloadable()
+                                    ->previewable()
+                                    ->columnSpan(1),
+                            ]),
 
-                        Forms\Components\Select::make('sumber_air')
-                            ->options([
-                                'PDAM' => 'PDAM',
-                                'Sumur Bor' => 'Sumur Bor',
-                                'Sumur Gali' => 'Sumur Gali',
-                                'Air Hujan' => 'Air Hujan',
-                                'Sungai/Mata Air' => 'Sungai/Mata Air'
-                            ])
-                            ->required()
-                            ->label('Sumber Air'),
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\Select::make('sumber_air')
+                                    ->options([
+                                        'PDAM' => 'PDAM',
+                                        'PAM' => 'PAM',
+                                        'Sumur Bor' => 'Sumur Bor',
+                                        'Sumur Gali' => 'Sumur Gali',
+                                        'Air Hujan' => 'Air Hujan',
+                                        'Sungai/Mata Air' => 'Sungai/Mata Air'
+                                    ])
+                                    ->required()
+                                    ->label('Sumber Air')
+                                    ->columnSpan(2),
+                                Forms\Components\FileUpload::make('bukti_sumber_air')
+                                    ->label('Bukti Sumber Air')
+                                    ->acceptedFileTypes(['image/*', 'application/pdf'])
+                                    ->directory('bukti-pendukung/sumber-air')
+                                    ->visibility('private')
+                                    ->downloadable()
+                                    ->previewable()
+                                    ->columnSpan(1),
+                            ]),
 
-                        Forms\Components\Select::make('kendaraan')
-                            ->options([
-                                'Motor' => 'Motor',
-                                'Mobil' => 'Mobil',
-                                'Sepeda' => 'Sepeda',
-                                'Tidak Ada' => 'Tidak Ada'
-                            ])
-                            ->required()
-                            ->label('Kendaraan'),
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\Select::make('kendaraan')
+                                    ->options([
+                                        'Motor' => 'Motor',
+                                        'Sepeda Motor' => 'Sepeda Motor',
+                                        'Mobil' => 'Mobil',
+                                        'Sepeda' => 'Sepeda',
+                                        'Tidak Ada' => 'Tidak Ada'
+                                    ])
+                                    ->required()
+                                    ->label('Kendaraan')
+                                    ->columnSpan(2),
+                                Forms\Components\FileUpload::make('bukti_kendaraan')
+                                    ->label('Bukti Kendaraan')
+                                    ->acceptedFileTypes(['image/*', 'application/pdf'])
+                                    ->directory('bukti-pendukung/kendaraan')
+                                    ->visibility('private')
+                                    ->downloadable()
+                                    ->previewable()
+                                    ->columnSpan(1),
+                            ]),
 
-                        Forms\Components\Select::make('kondisi_ekonomi')
-                            ->options([
-                                'Surplus' => 'Surplus',
-                                'Cukup' => 'Cukup',
-                                'Defisit' => 'Defisit',
-                                'Berhutang' => 'Berhutang'
-                            ])
-                            ->required()
-                            ->label('Kondisi Ekonomi'),
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\Select::make('kondisi_ekonomi')
+                                    ->options([
+                                        'Tidak Ada' => 'Tidak Ada',
+                                        'Sangat Sedikit' => 'Sangat Sedikit',
+                                        'Sedikit' => 'Sedikit',
+                                        'Cukup' => 'Cukup',
+                                        'Banyak' => 'Banyak',
+                                        'Sangat Banyak' => 'Sangat Banyak',
+                                        'Surplus' => 'Surplus',
+                                        'Defisit' => 'Defisit',
+                                        'Berhutang' => 'Berhutang'
+                                    ])
+                                    ->required()
+                                    ->label('Kondisi Ekonomi/Aset Keluarga')
+                                    ->columnSpan(2),
+                                Forms\Components\FileUpload::make('bukti_kondisi_ekonomi')
+                                    ->label('Bukti Kondisi Ekonomi')
+                                    ->acceptedFileTypes(['image/*', 'application/pdf'])
+                                    ->directory('bukti-pendukung/kondisi-ekonomi')
+                                    ->visibility('private')
+                                    ->downloadable()
+                                    ->previewable()
+                                    ->columnSpan(1),
+                            ]),
 
-                        Forms\Components\Textarea::make('prestasi')
-                            ->maxLength(1000)
-                            ->label('Prestasi yang Pernah Diraih'),
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\Textarea::make('prestasi')
+                                    ->maxLength(1000)
+                                    ->label('Prestasi yang Pernah Diraih')
+                                    ->columnSpan(2),
+                                Forms\Components\FileUpload::make('bukti_prestasi')
+                                    ->label('Bukti Prestasi')
+                                    ->acceptedFileTypes(['image/*', 'application/pdf'])
+                                    ->directory('bukti-pendukung/prestasi')
+                                    ->visibility('private')
+                                    ->downloadable()
+                                    ->previewable()
+                                    ->columnSpan(1),
+                            ]),
 
-                        Forms\Components\Select::make('status_bekerja')
-                            ->options([
-                                'Bekerja' => 'Bekerja',
-                                'Tidak Bekerja' => 'Tidak Bekerja'
-                            ])
-                            ->required()
-                            ->label('Status Pekerjaan Saat Ini'),
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\Select::make('status_bekerja')
+                                    ->options([
+                                        'Bekerja' => 'Bekerja',
+                                        'Tidak Bekerja' => 'Tidak Bekerja'
+                                    ])
+                                    ->required()
+                                    ->label('Status Pekerjaan Saat Ini')
+                                    ->columnSpan(2),
+                                Forms\Components\FileUpload::make('bukti_status_bekerja')
+                                    ->label('Bukti Status Bekerja')
+                                    ->acceptedFileTypes(['image/*', 'application/pdf'])
+                                    ->directory('bukti-pendukung/status-bekerja')
+                                    ->visibility('private')
+                                    ->downloadable()
+                                    ->previewable()
+                                    ->columnSpan(1),
+                            ]),
 
-                        Forms\Components\Select::make('status_daftar_ulang')
-                            ->options([
-                                'Sudah' => 'Sudah',
-                                'Belum' => 'Belum'
-                            ])
-                            ->required()
-                            ->label('Status Daftar Ulang'),
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\Select::make('status_daftar_ulang')
+                                    ->options([
+                                        'Sudah' => 'Sudah',
+                                        'Belum' => 'Belum'
+                                    ])
+                                    ->required()
+                                    ->label('Status Daftar Ulang')
+                                    ->columnSpan(2),
+                                Forms\Components\FileUpload::make('bukti_status_daftar_ulang')
+                                    ->label('Bukti Status Daftar Ulang')
+                                    ->acceptedFileTypes(['image/*', 'application/pdf'])
+                                    ->directory('bukti-pendukung/status-daftar-ulang')
+                                    ->visibility('private')
+                                    ->downloadable()
+                                    ->previewable()
+                                    ->columnSpan(1),
+                            ]),
 
-                        Forms\Components\Textarea::make('sumber_biaya_daftar_ulang')
-                            ->maxLength(500)
-                            ->label('Sumber Biaya Daftar Ulang'),
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\Textarea::make('sumber_biaya_daftar_ulang')
+                                    ->maxLength(500)
+                                    ->label('Sumber Biaya Daftar Ulang')
+                                    ->columnSpan(2),
+                                Forms\Components\FileUpload::make('bukti_sumber_biaya_daftar_ulang')
+                                    ->label('Bukti Sumber Biaya')
+                                    ->acceptedFileTypes(['image/*', 'application/pdf'])
+                                    ->directory('bukti-pendukung/sumber-biaya-daftar-ulang')
+                                    ->visibility('private')
+                                    ->downloadable()
+                                    ->previewable()
+                                    ->columnSpan(1),
+                            ]),
 
-                        Forms\Components\Select::make('komitmen')
-                            ->options([
-                                'Sangat Berkomitmen' => 'Sangat Berkomitmen',
-                                'Berkomitmen' => 'Berkomitmen',
-                                'Cukup Berkomitmen' => 'Cukup Berkomitmen'
-                            ])
-                            ->required()
-                            ->label('Tingkat Komitmen'),
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\Select::make('komitmen')
+                                    ->options([
+                                        'Sangat Berkomitmen' => 'Sangat Berkomitmen',
+                                        'Berkomitmen' => 'Berkomitmen',
+                                        'Cukup Berkomitmen' => 'Cukup Berkomitmen',
+                                        'Kurang Berkomitmen' => 'Kurang Berkomitmen'
+                                    ])
+                                    ->required()
+                                    ->label('Tingkat Komitmen')
+                                    ->columnSpan(2),
+                                Forms\Components\FileUpload::make('bukti_komitmen')
+                                    ->label('Bukti Komitmen')
+                                    ->acceptedFileTypes(['image/*', 'application/pdf'])
+                                    ->directory('bukti-pendukung/komitmen')
+                                    ->visibility('private')
+                                    ->downloadable()
+                                    ->previewable()
+                                    ->columnSpan(1),
+                            ]),
 
-                        Forms\Components\Select::make('fleksibilitas_jurusan')
-                            ->options([
-                                'Ya' => 'Ya',
-                                'Tidak' => 'Tidak'
-                            ])
-                            ->required()
-                            ->label('Bersedia di Jurusan Lain'),
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\Select::make('fleksibilitas_jurusan')
+                                    ->options([
+                                        'Ya' => 'Ya',
+                                        'Tidak' => 'Tidak'
+                                    ])
+                                    ->required()
+                                    ->label('Bersedia di Jurusan Lain')
+                                    ->columnSpan(2),
+                                Forms\Components\FileUpload::make('bukti_fleksibilitas_jurusan')
+                                    ->label('Bukti Fleksibilitas')
+                                    ->acceptedFileTypes(['image/*', 'application/pdf'])
+                                    ->directory('bukti-pendukung/fleksibilitas-jurusan')
+                                    ->visibility('private')
+                                    ->downloadable()
+                                    ->previewable()
+                                    ->columnSpan(1),
+                            ]),
 
-                        Forms\Components\Select::make('rencana_mendaftar_lagi')
-                            ->options([
-                                'Ya' => 'Ya',
-                                'Tidak' => 'Tidak'
-                            ])
-                            ->required()
-                            ->label('Rencana Mendaftar Lagi Tahun Depan'),
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\Select::make('rencana_mendaftar_lagi')
+                                    ->options([
+                                        'Ya' => 'Ya',
+                                        'Tidak' => 'Tidak'
+                                    ])
+                                    ->required()
+                                    ->label('Rencana Mendaftar Lagi Tahun Depan')
+                                    ->columnSpan(2),
+                                Forms\Components\FileUpload::make('bukti_rencana_mendaftar_lagi')
+                                    ->label('Bukti Rencana')
+                                    ->acceptedFileTypes(['image/*', 'application/pdf'])
+                                    ->directory('bukti-pendukung/rencana-mendaftar-lagi')
+                                    ->visibility('private')
+                                    ->downloadable()
+                                    ->previewable()
+                                    ->columnSpan(1),
+                            ]),
 
-                        Forms\Components\Select::make('support_orang_tua')
-                            ->options([
-                                'Sangat Mendukung' => 'Sangat Mendukung',
-                                'Mendukung' => 'Mendukung',
-                                'Cukup Mendukung' => 'Cukup Mendukung',
-                                'Kurang Mendukung' => 'Kurang Mendukung'
-                            ])
-                            ->required()
-                            ->label('Tingkat Dukungan Orang Tua'),
-                    ])->columns(2)
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\Select::make('support_orang_tua')
+                                    ->options([
+                                        'Sangat Mendukung' => 'Sangat Mendukung',
+                                        'Mendukung' => 'Mendukung',
+                                        'Cukup Mendukung' => 'Cukup Mendukung',
+                                        'Kurang Mendukung' => 'Kurang Mendukung'
+                                    ])
+                                    ->required()
+                                    ->label('Tingkat Dukungan Orang Tua')
+                                    ->columnSpan(2),
+                                Forms\Components\FileUpload::make('bukti_support_orang_tua')
+                                    ->label('Bukti Dukungan Orang Tua')
+                                    ->acceptedFileTypes(['image/*', 'application/pdf'])
+                                    ->directory('bukti-pendukung/support-orang-tua')
+                                    ->visibility('private')
+                                    ->downloadable()
+                                    ->previewable()
+                                    ->columnSpan(1),
+                            ]),
+                    ])
             ]);
     }
 
